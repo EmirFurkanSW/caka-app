@@ -70,4 +70,23 @@ public class LastLoginStore : ILastLoginStore
             // Kaydetme hatasında sessizce devam et
         }
     }
+
+    public void RemoveUserName(string userName)
+    {
+        if (string.IsNullOrWhiteSpace(userName)) return;
+        try
+        {
+            var (logins, lastUsed) = GetAllLogins();
+            var list = logins.Select(x => x.UserName)
+                .Where(u => !string.Equals(u, userName.Trim(), StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            var obj = new { LastUsedUserName = lastUsed == userName.Trim() ? list.FirstOrDefault() : lastUsed, UserNames = list };
+            var json = JsonSerializer.Serialize(obj, JsonOptions);
+            File.WriteAllText(_filePath, json);
+        }
+        catch
+        {
+            // Silme hatasında sessizce devam et
+        }
+    }
 }

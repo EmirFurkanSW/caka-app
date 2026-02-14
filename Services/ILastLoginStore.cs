@@ -14,4 +14,9 @@ public interface ILastLoginStore
     /// Bu kullanıcıyı ekler veya şifresini günceller; son kullanılan olarak işaretler.
     /// </summary>
     void SaveLogin(string userName, string password);
+
+    /// <summary>
+    /// Kayıtlı kullanıcı adları listesinden verilen kullanıcıyı siler.
+    /// </summary>
+    void RemoveUserName(string userName);
 }

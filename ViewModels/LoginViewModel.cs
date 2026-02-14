@@ -27,6 +27,7 @@ public class LoginViewModel : ViewModelBase
         _serviceProvider = serviceProvider;
         _lastLoginStore = lastLoginStore;
         LoginCommand = new RelayCommand(_ => DoLogin(), _ => !IsBusy && !string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password));
+        RemoveSavedUserCommand = new RelayCommand(_ => DoRemoveSavedUser(), _ => CanRemoveSavedUser());
 
         var (logins, lastUsed) = _lastLoginStore.GetAllLogins();
         // Bu bilgisayarda daha önce giriş yapmış tüm kullanıcı adları listelenir; şifre saklanmaz.
@@ -53,7 +54,14 @@ public class LoginViewModel : ViewModelBase
     public string UserName
     {
         get => _userName;
-        set { if (SetProperty(ref _userName, value)) { ClearError(); } }
+        set
+        {
+            if (SetProperty(ref _userName, value))
+            {
+                ClearError();
+                ((RelayCommand)RemoveSavedUserCommand).RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public string Password
@@ -75,6 +83,24 @@ public class LoginViewModel : ViewModelBase
     }
 
     public ICommand LoginCommand { get; }
+    public ICommand RemoveSavedUserCommand { get; }
+
+    private bool CanRemoveSavedUser()
+    {
+        var trimmed = UserName?.Trim();
+        return !string.IsNullOrEmpty(trimmed) && _savedUserNames.Contains(trimmed);
+    }
+
+    private void DoRemoveSavedUser()
+    {
+        var trimmed = UserName?.Trim();
+        if (string.IsNullOrEmpty(trimmed) || !_savedUserNames.Contains(trimmed)) return;
+        _lastLoginStore.RemoveUserName(trimmed);
+        _savedUserNames.Remove(trimmed);
+        if (UserName == trimmed)
+            UserName = _savedUserNames.FirstOrDefault() ?? string.Empty;
+        ((RelayCommand)RemoveSavedUserCommand).RaiseCanExecuteChanged();
+    }
 
     private void ClearError() => ErrorMessage = string.Empty;
 

@@ -25,11 +25,22 @@
                            HorizontalAlignment="Center" Margin="0,0,0,32"/>
 
                 <TextBlock Text="Kullanıcı adı" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
-                <ComboBox x:Name="UserNameCombo" ItemsSource="{Binding SavedUserNames}"
-                          Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
-                          IsEditable="True" Margin="0,0,0,16" Padding="12,10" FontSize="14"
-                          BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
-                          SelectionChanged="UserNameCombo_SelectionChanged"/>
+                <Grid Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <ComboBox x:Name="UserNameCombo" Grid.Column="0" ItemsSource="{Binding SavedUserNames}"
+                              Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
+                              IsEditable="True" Padding="12,10" FontSize="14" VerticalAlignment="Center"
+                              BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                              SelectionChanged="UserNameCombo_SelectionChanged"/>
+                    <Button Grid.Column="1" Content="Listeden sil" Command="{Binding RemoveSavedUserCommand}"
+                            Margin="8,0,0,0" Padding="8,6" FontSize="12" VerticalAlignment="Center"
+                            Style="{StaticResource SecondaryButtonStyle}" ToolTip="Seçili kullanıcı adını kayıtlı listeden kaldırır"/>
+                </Grid>
+                <TextBlock Text="Kayıtlı kullanıcılardan silmek için listeden seçip &#x22;Listeden sil&#x22;e tıklayın." 
+                           FontSize="11" Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,12"/>
 
                 <TextBlock Text="Şifre" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
                 <PasswordBox x:Name="PasswordBox" Margin="0,0,0,8"

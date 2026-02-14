@@ -64,3 +64,4 @@ C:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Release\net8.0\CAKA.Api.genrun
 C:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Release\net8.0\ref\CAKA.Api.dll
 c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\bin\Release\net8.0\Npgsql.dll
 c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\bin\Release\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Release\net8.0\CAKA.Api.sourcelink.json

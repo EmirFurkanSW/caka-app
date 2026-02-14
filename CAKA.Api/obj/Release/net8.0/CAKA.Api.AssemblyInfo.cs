@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CAKA.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ef1f8cded41237a7c388d9b7cad2b6a4e84fc6aa")]
 [assembly: System.Reflection.AssemblyProductAttribute("CAKA.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CAKA.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

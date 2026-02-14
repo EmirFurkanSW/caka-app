@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj": {}
+    "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj": {}
   },
   "projects": {
-    "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj": {
+    "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj",
+        "projectUniqueName": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj",
         "projectName": "CAKA.Api",
-        "projectPath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj",
+        "projectPath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj",
         "packagesPath": "C:\\Users\\izcif\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\obj\\",
+        "outputPath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\izcif\\AppData\\Roaming\\NuGet\\NuGet.Config"

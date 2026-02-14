@@ -25,6 +25,7 @@ public class AuthTokenService : IAuthTokenService
         var claims = new[]
         {
             new Claim(ClaimTypes.Name, userName),
+            new Claim(ClaimTypes.Role, role),
             new Claim("role", role)
         };
 

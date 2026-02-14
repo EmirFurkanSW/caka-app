@@ -1,4 +1,5 @@
 using System;
+using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -25,7 +26,8 @@ public partial class LoginWindow : Window
 
         try
         {
-            var uri = new Uri("pack://application:,,,/CAKA.PerformanceApp;component/Assets/Images/Logo.png", UriKind.Absolute);
+            var asmName = Assembly.GetExecutingAssembly().GetName().Name;
+            var uri = new Uri($"pack://application:,,,/{asmName};component/Assets/Images/Logo.png", UriKind.Absolute);
             var bitmap = new BitmapImage(uri);
             void ShowLogo()
             {

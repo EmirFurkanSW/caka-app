@@ -30,6 +30,9 @@ public class WeekWorkLogGroup : INotifyPropertyChanged
     /// <summary>Seçilen kullanıcıya göre filtrelenmiş kayıtlar (null = tümü).</summary>
     public ObservableCollection<WorkLog> FilteredEntries { get; } = new();
 
+    /// <summary>Admin raporlarında DataGrid'de seçilen kayıtlar (silme için).</summary>
+    public ObservableCollection<WorkLog> SelectedForDelete { get; } = new();
+
     /// <summary>Filtrelenmiş kayıtların toplam çalışma saati (seçilen kullanıcı veya tümü). Admin raporlar için.</summary>
     public decimal TotalHours => FilteredEntries.Sum(e => e.Hours);
 

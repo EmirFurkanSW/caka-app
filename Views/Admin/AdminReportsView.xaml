@@ -47,10 +47,12 @@
                                               SelectedValue="{Binding SelectedUserName, Mode=TwoWay}"
                                               SelectedValuePath="UserName" DisplayMemberPath="DisplayName"
                                               Margin="0,0,0,12" Padding="8,6" MinWidth="200" HorizontalAlignment="Left"/>
-                                    <DataGrid ItemsSource="{Binding FilteredEntries}" AutoGenerateColumns="False" IsReadOnly="True"
+                                    <DataGrid x:Name="ReportsDataGrid" ItemsSource="{Binding FilteredEntries}" AutoGenerateColumns="False" IsReadOnly="True"
                                           CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                                          SelectionMode="Extended" SelectionUnit="FullRow"
                                           RowHeight="36" BorderThickness="0"
-                                          BorderBrush="{StaticResource BorderBrush}">
+                                          BorderBrush="{StaticResource BorderBrush}"
+                                          SelectionChanged="ReportsDataGrid_SelectionChanged">
                                         <DataGrid.Columns>
                                             <DataGridTextColumn Header="Tarih" Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyy}'}" Width="90" MinWidth="90"/>
                                             <DataGridTextColumn Header="Gün" Width="85" MinWidth="85">
@@ -74,10 +76,16 @@
                                         <Run Text="Toplam çalışma süresi: "/>
                                         <Run Text="{Binding TotalHours, StringFormat='{}{0:N1} saat', Mode=OneWay}"/>
                                     </TextBlock>
-                                    <Button Content="Bu haftayı PDF olarak kaydet" Command="{Binding DataContext.ExportWeekToPdfCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                                            CommandParameter="{Binding}"
-                                            Margin="0,12,0,0" Padding="14,8" HorizontalAlignment="Left"
-                                            Background="{StaticResource AccentBrush}" Foreground="White"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <Button Content="Seçilenleri sil" Command="{Binding DataContext.DeleteSelectedCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Margin="0,0,8,0" Padding="14,8"
+                                                Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                                        <Button Content="Bu haftayı PDF olarak kaydet" Command="{Binding DataContext.ExportWeekToPdfCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Padding="14,8"
+                                                Background="{StaticResource AccentBrush}" Foreground="White"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </Expander>

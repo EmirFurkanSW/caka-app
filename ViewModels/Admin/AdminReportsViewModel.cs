@@ -23,6 +23,11 @@ public class AdminReportsViewModel : ViewModelBase
                 ExportWeekToPdf(group);
         });
         ExportAllWeeksToPdfCommand = new RelayCommand(_ => ExportAllWeeksToPdf());
+        DeleteSelectedCommand = new RelayCommand(param =>
+        {
+            if (param is WeekWorkLogGroup group)
+                DeleteSelected(group);
+        });
         Refresh();
     }
 
@@ -35,6 +40,7 @@ public class AdminReportsViewModel : ViewModelBase
     public ICommand RefreshCommand { get; }
     public ICommand ExportWeekToPdfCommand { get; }
     public ICommand ExportAllWeeksToPdfCommand { get; }
+    public ICommand DeleteSelectedCommand { get; }
 
     private static DateTime GetMonday(DateTime date)
     {
@@ -119,5 +125,25 @@ public class AdminReportsViewModel : ViewModelBase
         }
 
         MessageBox.Show($"{count} adet haftalık PDF seçilen klasöre kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void DeleteSelected(WeekWorkLogGroup group)
+    {
+        if (group.SelectedForDelete.Count == 0)
+        {
+            MessageBox.Show("Silmek için önce listeden bir veya daha fazla iş kaydı seçin.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+        if (MessageBox.Show(
+                $"{group.SelectedForDelete.Count} adet iş kaydını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.",
+                "İş kayıtlarını sil",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question) != MessageBoxResult.Yes)
+            return;
+        var toDelete = group.SelectedForDelete.ToList();
+        foreach (var log in toDelete)
+            _workLogService.Delete(log.Id);
+        Refresh();
+        MessageBox.Show($"{toDelete.Count} adet iş kaydı silindi.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

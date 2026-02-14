@@ -72,15 +72,20 @@ public class WorkLogsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<WorkLogDto>> Add([FromBody] WorkLogDto dto)
+    public async Task<ActionResult<WorkLogDto>> Add([FromBody] WorkLogDto? dto)
     {
         var current = CurrentUserName;
         if (string.IsNullOrEmpty(current)) return Unauthorized();
+        if (dto == null) return BadRequest("İş kaydı verisi eksik.");
+
+        var logDate = dto.Date;
+        if (logDate == default) logDate = DateTime.UtcNow.Date;
+        var dateOnly = DateTime.SpecifyKind(logDate.Date, DateTimeKind.Unspecified);
 
         var entity = new WorkLogEntity
         {
             Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
-            Date = dto.Date,
+            Date = dateOnly,
             Description = dto.Description ?? "",
             Hours = dto.Hours,
             UserName = IsAdmin && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,

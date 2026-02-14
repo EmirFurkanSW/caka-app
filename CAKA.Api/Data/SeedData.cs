@@ -11,21 +11,33 @@ public static class SeedData
 
     public static async Task EnsureAdminAsync(AppDbContext db)
     {
-        if (await db.Users.AnyAsync(u => u.UserName == AdminUserName))
-            return;
+        var hasAdmin = await db.Users.AnyAsync(u => u.UserName == AdminUserName);
+        var legacyUser = await db.Users.FirstOrDefaultAsync(u => u.UserName == LegacyAdminUserName);
 
-        var legacyAdmin = await db.Users.FirstOrDefaultAsync(u => u.UserName == LegacyAdminUserName);
-        if (legacyAdmin != null)
+        if (legacyUser != null)
         {
-            legacyAdmin.UserName = AdminUserName;
-            legacyAdmin.PasswordHash = BCrypt.Net.BCrypt.HashPassword(DefaultAdminPassword);
-            legacyAdmin.DisplayName = "Yönetici";
-            legacyAdmin.Role = "Admin";
-            await db.WorkLogs.Where(w => w.UserName == LegacyAdminUserName)
-                .ExecuteUpdateAsync(s => s.SetProperty(w => w.UserName, AdminUserName));
-            await db.SaveChangesAsync();
+            if (hasAdmin)
+            {
+                await db.WorkLogs.Where(w => w.UserName == LegacyAdminUserName)
+                    .ExecuteUpdateAsync(s => s.SetProperty(w => w.UserName, AdminUserName));
+                db.Users.Remove(legacyUser);
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                legacyUser.UserName = AdminUserName;
+                legacyUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(DefaultAdminPassword);
+                legacyUser.DisplayName = "Yönetici";
+                legacyUser.Role = "Admin";
+                await db.WorkLogs.Where(w => w.UserName == LegacyAdminUserName)
+                    .ExecuteUpdateAsync(s => s.SetProperty(w => w.UserName, AdminUserName));
+                await db.SaveChangesAsync();
+            }
             return;
         }
+
+        if (hasAdmin)
+            return;
 
         var hash = BCrypt.Net.BCrypt.HashPassword(DefaultAdminPassword);
         db.Users.Add(new UserEntity

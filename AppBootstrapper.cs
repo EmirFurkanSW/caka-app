@@ -43,6 +43,7 @@ public static class AppBootstrapper
         services.AddSingleton<INavigationService, NavigationService>();
         services.AddSingleton<IDashboardDataService, DashboardDataService>();
         services.AddSingleton<IReportPdfService, ReportPdfService>();
+        services.AddSingleton<IReportExcelService, ReportExcelService>();
         services.AddSingleton<ILastLoginStore, LastLoginStore>();
 
         // ViewModels (transient: her sayfa için yeni instance)

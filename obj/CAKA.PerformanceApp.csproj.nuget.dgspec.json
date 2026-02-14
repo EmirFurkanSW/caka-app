@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {}
+    "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {}
   },
   "projects": {
-    "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {
+    "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
+        "projectUniqueName": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
         "projectName": "Caka Personel Takip",
-        "projectPath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
+        "projectPath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
         "packagesPath": "C:\\Users\\izcif\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\obj\\",
+        "outputPath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\izcif\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -43,6 +43,10 @@
         "net8.0-windows7.0": {
           "targetAlias": "net8.0-windows",
           "dependencies": {
+            "ClosedXML": {
+              "target": "Package",
+              "version": "[0.102.2, )"
+            },
             "CommunityToolkit.Mvvm": {
               "target": "Package",
               "version": "[8.2.2, )"

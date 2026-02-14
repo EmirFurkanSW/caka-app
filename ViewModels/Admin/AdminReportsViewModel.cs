@@ -9,11 +9,12 @@ namespace CAKA.PerformanceApp.ViewModels.Admin;
 
 public class AdminReportsViewModel : ViewModelBase
 {
-    public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportPdfService reportPdfService)
+    public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportPdfService reportPdfService, IReportExcelService reportExcelService)
     {
         _workLogService = workLogService;
         _userStore = userStore;
         _reportPdfService = reportPdfService;
+        _reportExcelService = reportExcelService;
         WeekGroups = new ObservableCollection<WeekWorkLogGroup>();
         AllUsers = new ObservableCollection<StoredUser>();
         RefreshCommand = new RelayCommand(_ => Refresh());
@@ -23,6 +24,12 @@ public class AdminReportsViewModel : ViewModelBase
                 ExportWeekToPdf(group);
         });
         ExportAllWeeksToPdfCommand = new RelayCommand(_ => ExportAllWeeksToPdf());
+        ExportWeekToExcelCommand = new RelayCommand(param =>
+        {
+            if (param is WeekWorkLogGroup group)
+                ExportWeekToExcel(group);
+        });
+        ExportAllWeeksToExcelCommand = new RelayCommand(_ => ExportAllWeeksToExcel());
         DeleteSelectedCommand = new RelayCommand(param =>
         {
             if (param is WeekWorkLogGroup group)
@@ -34,12 +41,15 @@ public class AdminReportsViewModel : ViewModelBase
     private readonly IWorkLogService _workLogService;
     private readonly IUserStore _userStore;
     private readonly IReportPdfService _reportPdfService;
+    private readonly IReportExcelService _reportExcelService;
 
     public ObservableCollection<WeekWorkLogGroup> WeekGroups { get; }
     public ObservableCollection<StoredUser> AllUsers { get; }
     public ICommand RefreshCommand { get; }
     public ICommand ExportWeekToPdfCommand { get; }
     public ICommand ExportAllWeeksToPdfCommand { get; }
+    public ICommand ExportWeekToExcelCommand { get; }
+    public ICommand ExportAllWeeksToExcelCommand { get; }
     public ICommand DeleteSelectedCommand { get; }
 
     private static DateTime GetMonday(DateTime date)
@@ -89,6 +99,20 @@ public class AdminReportsViewModel : ViewModelBase
         _reportPdfService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
     }
 
+    private void ExportWeekToExcel(WeekWorkLogGroup group)
+    {
+        var defaultName = $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.xlsx";
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Excel dosyası|*.xlsx",
+            DefaultExt = ".xlsx",
+            FileName = defaultName
+        };
+        if (dlg.ShowDialog() != true) return;
+        var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
+        _reportExcelService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
+    }
+
     /// <summary>
     /// Kullanıcı bir klasör seçer; tüm haftaların PDF'leri o klasöre, her biri kendi hafta adıyla (Rapor_dd.MM.yyyy-dd.MM.yyyy.pdf) kaydedilir.
     /// </summary>
@@ -125,6 +149,41 @@ public class AdminReportsViewModel : ViewModelBase
         }
 
         MessageBox.Show($"{count} adet haftalık PDF seçilen klasöre kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private void ExportAllWeeksToExcel()
+    {
+        if (WeekGroups.Count == 0)
+        {
+            MessageBox.Show("Rapor oluşturmak için en az bir hafta verisi olmalı.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
+        var first = WeekGroups[0];
+        var defaultName = $"Rapor_{first.WeekStart:dd.MM.yyyy}-{first.WeekEnd:dd.MM.yyyy}.xlsx";
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Tüm hafta Excel dosyalarının kaydedileceği klasörü seçin (dosya adı yalnızca klasör için kullanılır)",
+            Filter = "Excel dosyası|*.xlsx",
+            DefaultExt = ".xlsx",
+            FileName = defaultName
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        var folder = System.IO.Path.GetDirectoryName(dlg.FileName);
+        if (string.IsNullOrEmpty(folder))
+            return;
+
+        var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
+        var count = 0;
+        foreach (var group in WeekGroups)
+        {
+            var filePath = System.IO.Path.Combine(folder, $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.xlsx");
+            _reportExcelService.GenerateWeekReport(filePath, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
+            count++;
+        }
+
+        MessageBox.Show($"{count} adet haftalık Excel seçilen klasöre kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void DeleteSelected(WeekWorkLogGroup group)

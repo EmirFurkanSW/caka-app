@@ -6,7 +6,7 @@
   "compilationOptions": {},
   "targets": {
     ".NETCoreApp,Version=v8.0": {
-      "CAKA.PerformanceApp/1.0.0": {
+      "Caka Personel Takip/1.0.0": {
         "dependencies": {
           "CommunityToolkit.Mvvm": "8.2.2",
           "MaterialDesignThemes": "5.0.0",
@@ -15,7 +15,7 @@
           "PDFsharp": "6.2.4"
         },
         "runtime": {
-          "CAKA.PerformanceApp.dll": {}
+          "Caka Personel Takip.dll": {}
         }
       },
       "CommunityToolkit.Mvvm/8.2.2": {
@@ -246,7 +246,7 @@
     }
   },
   "libraries": {
-    "CAKA.PerformanceApp/1.0.0": {
+    "Caka Personel Takip/1.0.0": {
       "type": "project",
       "serviceable": false,
       "sha512": ""

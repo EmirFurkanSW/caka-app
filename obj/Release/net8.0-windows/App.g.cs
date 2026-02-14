@@ -60,7 +60,7 @@ namespace CAKA.PerformanceApp {
             
             #line default
             #line hidden
-            System.Uri resourceLocater = new System.Uri("/CAKA.PerformanceApp;component/app.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/Caka Personel Takip;component/app.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\App.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

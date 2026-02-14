@@ -61,7 +61,7 @@ namespace CAKA.PerformanceApp.Views.Admin {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/CAKA.PerformanceApp;component/views/admin/adminshellwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/Caka Personel Takip;component/views/admin/adminshellwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\..\Views\Admin\AdminShellWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

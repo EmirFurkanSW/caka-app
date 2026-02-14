@@ -10,13 +10,15 @@
 using System;
 using System.Reflection;
 
-[assembly: System.Reflection.AssemblyCompanyAttribute("CAKA.Api")]
+[assembly: System.Reflection.AssemblyCompanyAttribute("CAKA.PerformanceApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
 [assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bdc961aaebab96c583d5545e709f49d8978bbfed")]
-[assembly: System.Reflection.AssemblyProductAttribute("CAKA.Api")]
-[assembly: System.Reflection.AssemblyTitleAttribute("CAKA.Api")]
+[assembly: System.Reflection.AssemblyProductAttribute("CAKA.PerformanceApp")]
+[assembly: System.Reflection.AssemblyTitleAttribute("CAKA.PerformanceApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
+[assembly: System.Runtime.Versioning.TargetPlatformAttribute("Windows7.0")]
+[assembly: System.Runtime.Versioning.SupportedOSPlatformAttribute("Windows7.0")]
 
 // MSBuild WriteCodeFragment sınıfı tarafından oluşturuldu.
 

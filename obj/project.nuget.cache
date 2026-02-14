@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "VbJJA9aPmkg=",
+  "dgSpecHash": "s84kTsflEq4=",
   "success": true,
-  "projectFilePath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
+  "projectFilePath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\izcif\\.nuget\\packages\\communitytoolkit.mvvm\\8.2.2\\communitytoolkit.mvvm.8.2.2.nupkg.sha512",
     "C:\\Users\\izcif\\.nuget\\packages\\materialdesigncolors\\3.0.0\\materialdesigncolors.3.0.0.nupkg.sha512",

@@ -6,8 +6,11 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
-    <AssemblyName>CAKA.PerformanceApp</AssemblyName>
+    <AssemblyName>Caka Personel Takip</AssemblyName>
     <RootNamespace>CAKA.PerformanceApp</RootNamespace>
+    <Product>Caka Personel Takip</Product>
+    <AssemblyTitle>Caka Personel Takip</AssemblyTitle>
+    <ApplicationIcon>Assets\Images\app.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Compile Remove="CAKA.Api\**" />

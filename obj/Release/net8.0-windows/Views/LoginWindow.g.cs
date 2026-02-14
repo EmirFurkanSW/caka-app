@@ -83,7 +83,7 @@ namespace CAKA.PerformanceApp.Views {
                 return;
             }
             _contentLoaded = true;
-            System.Uri resourceLocater = new System.Uri("/CAKA.PerformanceApp;component/views/loginwindow.xaml", System.UriKind.Relative);
+            System.Uri resourceLocater = new System.Uri("/Caka Personel Takip;component/views/loginwindow.xaml", System.UriKind.Relative);
             
             #line 1 "..\..\..\..\Views\LoginWindow.xaml"
             System.Windows.Application.LoadComponent(this, resourceLocater);

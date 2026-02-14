@@ -82,12 +82,12 @@ public class WorkLogsController : ControllerBase
         {
             var logDate = dto.Date;
             if (logDate == default) logDate = DateTime.UtcNow.Date;
-            var dateOnly = DateTime.SpecifyKind(logDate.Date, DateTimeKind.Unspecified);
+            var dateUtc = DateTime.SpecifyKind(logDate.Date, DateTimeKind.Utc);
 
             var entity = new WorkLogEntity
             {
                 Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
-                Date = dateOnly,
+                Date = dateUtc,
                 Description = dto.Description ?? "",
                 Hours = dto.Hours,
                 UserName = IsAdmin && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,
@@ -119,7 +119,8 @@ public class WorkLogsController : ControllerBase
         if (entity == null) return NotFound();
         if (!IsAdmin && entity.UserName != CurrentUserName) return Forbid();
 
-        entity.Date = dto.Date;
+        var logDate = dto.Date == default ? DateTime.UtcNow.Date : dto.Date.Date;
+        entity.Date = DateTime.SpecifyKind(logDate, DateTimeKind.Utc);
         entity.Description = dto.Description ?? "";
         entity.Hours = dto.Hours;
         await _db.SaveChangesAsync();

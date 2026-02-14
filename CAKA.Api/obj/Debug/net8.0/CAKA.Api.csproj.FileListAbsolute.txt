@@ -62,3 +62,6 @@ c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Debug\net8.0\refint\CAKA.Api.d
 c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Debug\net8.0\CAKA.Api.pdb
 c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Debug\net8.0\CAKA.Api.genruntimeconfig.cache
 c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Debug\net8.0\ref\CAKA.Api.dll
+c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\bin\Debug\net8.0\Npgsql.dll
+c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\bin\Debug\net8.0\Npgsql.EntityFrameworkCore.PostgreSQL.dll
+c:\Users\izcif\Desktop\CAKA v1-14.02\CAKA.Api\obj\Debug\net8.0\CAKA.Api.sourcelink.json

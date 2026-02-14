@@ -1,0 +1,90 @@
+<UserControl x:Class="CAKA.PerformanceApp.Views.Admin.AdminReportsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="500" d:DesignWidth="700">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="İş kayıtları (haftalık)" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Tüm haftaları PDF olarak kaydet" Command="{Binding ExportAllWeeksToPdfCommand}"
+                                Margin="0,0,8,0" Padding="14,8" HorizontalAlignment="Right"
+                                Background="{StaticResource AccentBrush}" Foreground="White"/>
+                        <Button Content="Yenile" Command="{Binding RefreshCommand}"
+                                Padding="14,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <ItemsControl ItemsSource="{Binding WeekGroups}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                        <Expander Margin="0,0,0,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
+                                  Background="{StaticResource CardBackgroundBrush}">
+                            <Expander.Header>
+                                <Grid Margin="16,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" MinWidth="120"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding DisplayTitle}" Style="{StaticResource TitleTextStyle}" FontSize="16" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" Margin="0,0,12,0"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding Entries.Count, StringFormat='{}{0} kayıt'}" Style="{StaticResource SubtitleTextStyle}"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                            </Expander.Header>
+                            <Border Padding="16,0,16,16" BorderThickness="0">
+                                <StackPanel>
+                                    <TextBlock Text="Kullanıcı seçin" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,6"/>
+                                    <ComboBox ItemsSource="{Binding DataContext.AllUsers, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              SelectedValue="{Binding SelectedUserName, Mode=TwoWay}"
+                                              SelectedValuePath="UserName" DisplayMemberPath="DisplayName"
+                                              Margin="0,0,0,12" Padding="8,6" MinWidth="200" HorizontalAlignment="Left"/>
+                                    <DataGrid ItemsSource="{Binding FilteredEntries}" AutoGenerateColumns="False" IsReadOnly="True"
+                                          CanUserAddRows="False" CanUserDeleteRows="False" HeadersVisibility="Column"
+                                          RowHeight="36" BorderThickness="0"
+                                          BorderBrush="{StaticResource BorderBrush}">
+                                        <DataGrid.Columns>
+                                            <DataGridTextColumn Header="Tarih" Binding="{Binding Date, StringFormat='{}{0:dd.MM.yyyy}'}" Width="90" MinWidth="90"/>
+                                            <DataGridTextColumn Header="Gün" Width="85" MinWidth="85">
+                                                <DataGridTextColumn.Binding>
+                                                    <Binding Path="Date" StringFormat="{}{0:dddd}"/>
+                                                </DataGridTextColumn.Binding>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="Kullanıcı" Binding="{Binding UserName}" Width="110" MinWidth="90"/>
+                                            <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="200">
+                                                <DataGridTextColumn.ElementStyle>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                                                        <Setter Property="ToolTip" Value="{Binding Description}"/>
+                                                    </Style>
+                                                </DataGridTextColumn.ElementStyle>
+                                            </DataGridTextColumn>
+                                            <DataGridTextColumn Header="Saat" Binding="{Binding Hours, StringFormat='{}{0:N1}'}" Width="60" MinWidth="60"/>
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                    <TextBlock Margin="0,12,0,0" FontWeight="SemiBold" Foreground="{StaticResource TextPrimaryBrush}">
+                                        <Run Text="Toplam çalışma süresi: "/>
+                                        <Run Text="{Binding TotalHours, StringFormat='{}{0:N1} saat', Mode=OneWay}"/>
+                                    </TextBlock>
+                                    <Button Content="Bu haftayı PDF olarak kaydet" Command="{Binding DataContext.ExportWeekToPdfCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}"
+                                            Margin="0,12,0,0" Padding="14,8" HorizontalAlignment="Left"
+                                            Background="{StaticResource AccentBrush}" Foreground="White"/>
+                                </StackPanel>
+                            </Border>
+                        </Expander>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

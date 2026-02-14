@@ -1,0 +1,94 @@
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.csproj.AssemblyReference.cache
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Styles\MaterialDesignOverrides.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminDashboardView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminEmployeesView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminReportsView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminSettingsView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\LoginWindow.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelAddWorkView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelDashboardView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelHistoryView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelProfileView.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\App.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminDashboardView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminEmployeesView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminReportsView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminSettingsView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\LoginWindow.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelAddWorkView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelDashboardView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelHistoryView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelProfileView.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\App.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp_MarkupCompile.cache
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp_MarkupCompile.lref
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\CAKA.PerformanceApp.exe
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\CAKA.PerformanceApp.deps.json
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\CAKA.PerformanceApp.runtimeconfig.json
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\CAKA.PerformanceApp.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\CAKA.PerformanceApp.pdb
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\CommunityToolkit.Mvvm.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\MaterialDesignColors.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\MaterialDesignThemes.Wpf.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\Microsoft.Extensions.DependencyInjection.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\Microsoft.Extensions.DependencyInjection.Abstractions.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\Microsoft.Xaml.Behaviors.dll
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminShellWindow.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelShellWindow.g.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Styles\CorporateTheme.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Admin\AdminShellWindow.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\Views\Personel\PersonelShellWindow.baml
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.g.resources
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.AssemblyInfoInputs.cache
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.AssemblyInfo.cs
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.csproj.CoreCompileInputs.cache
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.Per.44FC2CB6.Up2Date
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.dll
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\refint\CAKA.PerformanceApp.dll
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.pdb
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\CAKA.PerformanceApp.genruntimeconfig.cache
+C:\Users\izcif\Desktop\CAKA\obj\Release\net8.0-windows\ref\CAKA.PerformanceApp.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\Microsoft.Extensions.Logging.Abstractions.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.BarCodes.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.Charting.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.Cryptography.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.Quality.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.Shared.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.Snippets.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.System.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.WPFonts.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\PdfSharp.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\System.Security.Cryptography.Pkcs.dll
+C:\Users\izcif\Desktop\CAKA\bin\Release\net8.0-windows\runtimes\win\lib\net8.0\System.Security.Cryptography.Pkcs.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.csproj.AssemblyReference.cache
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Styles\MaterialDesignOverrides.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminDashboardView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminEmployeesView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminReportsView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminSettingsView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\LoginWindow.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelAddWorkView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelDashboardView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelHistoryView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelProfileView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\App.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminDashboardView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminEmployeesView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminReportsView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminSettingsView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminShellWindow.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\LoginWindow.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelAddWorkView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelDashboardView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelHistoryView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelProfileView.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Personel\PersonelShellWindow.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\App.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\GeneratedInternalTypeHelper.g.cs
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp_MarkupCompile.cache
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp_MarkupCompile.lref
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\refint\CAKA.PerformanceApp.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.pdb

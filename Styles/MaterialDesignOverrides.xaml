@@ -1,0 +1,9 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:materialDesign="http://materialdesigninxaml.net/winfx/xaml/themes">
+
+    <!-- Material Design tema renklerini kurumsal palet ile eşle -->
+    <Color x:Key="PrimaryHueMidBrush">#1E2A38</Color>
+    <SolidColorBrush x:Key="PrimaryHueMidBrush" Color="#1E2A38"/>
+    <SolidColorBrush x:Key="SecondaryHueMidBrush" Color="#4A90D9"/>
+</ResourceDictionary>

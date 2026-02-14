@@ -78,30 +78,38 @@ public class WorkLogsController : ControllerBase
         if (string.IsNullOrEmpty(current)) return Unauthorized();
         if (dto == null) return BadRequest("İş kaydı verisi eksik.");
 
-        var logDate = dto.Date;
-        if (logDate == default) logDate = DateTime.UtcNow.Date;
-        var dateOnly = DateTime.SpecifyKind(logDate.Date, DateTimeKind.Unspecified);
+        try
+        {
+            var logDate = dto.Date;
+            if (logDate == default) logDate = DateTime.UtcNow.Date;
+            var dateOnly = DateTime.SpecifyKind(logDate.Date, DateTimeKind.Unspecified);
 
-        var entity = new WorkLogEntity
+            var entity = new WorkLogEntity
+            {
+                Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
+                Date = dateOnly,
+                Description = dto.Description ?? "",
+                Hours = dto.Hours,
+                UserName = IsAdmin && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,
+                CreatedAt = DateTime.UtcNow
+            };
+            _db.WorkLogs.Add(entity);
+            await _db.SaveChangesAsync();
+            return Ok(new WorkLogDto
+            {
+                Id = entity.Id,
+                Date = entity.Date,
+                Description = entity.Description,
+                Hours = entity.Hours,
+                UserName = entity.UserName,
+                CreatedAt = entity.CreatedAt
+            });
+        }
+        catch (Exception ex)
         {
-            Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
-            Date = dateOnly,
-            Description = dto.Description ?? "",
-            Hours = dto.Hours,
-            UserName = IsAdmin && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,
-            CreatedAt = DateTime.UtcNow
-        };
-        _db.WorkLogs.Add(entity);
-        await _db.SaveChangesAsync();
-        return Ok(new WorkLogDto
-        {
-            Id = entity.Id,
-            Date = entity.Date,
-            Description = entity.Description,
-            Hours = entity.Hours,
-            UserName = entity.UserName,
-            CreatedAt = entity.CreatedAt
-        });
+            var msg = ex.InnerException?.Message ?? ex.Message;
+            return StatusCode(500, new { error = "İş kaydı eklenemedi.", detail = msg });
+        }
     }
 
     [HttpPut("{id:guid}")]

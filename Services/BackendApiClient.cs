@@ -164,7 +164,11 @@ public class BackendApiClient
             var dto = new { workLog.Id, workLog.Date, workLog.Description, workLog.Hours, workLog.UserName };
             var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/worklogs", body).ConfigureAwait(false);
-            res.EnsureSuccessStatusCode();
+            if (!res.IsSuccessStatusCode)
+            {
+                var errBody = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                throw new InvalidOperationException("Sunucu hatası: " + errBody);
+            }
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
             var created = JsonSerializer.Deserialize<WorkLog>(json, JsonOptions);
             if (created != null)

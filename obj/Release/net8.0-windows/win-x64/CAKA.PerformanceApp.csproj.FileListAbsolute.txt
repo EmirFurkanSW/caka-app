@@ -529,3 +529,9 @@ C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\win-x64\refint\C
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\win-x64\Caka Personel Takip.pdb
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\win-x64\CAKA.PerformanceApp.genruntimeconfig.cache
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\win-x64\ref\Caka Personel Takip.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\ClosedXML.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\DocumentFormat.OpenXml.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\ExcelNumberFormat.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\Irony.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\SixLabors.Fonts.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\XLParser.dll

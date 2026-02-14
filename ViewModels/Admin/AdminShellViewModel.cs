@@ -58,7 +58,7 @@ public class AdminShellViewModel : ViewModelBase
             if (SetProperty(ref _currentPage, value) && value != null)
             {
                 if (value is AdminDashboardViewModel dashboard)
-                    dashboard.Refresh();
+                    dashboard.RefreshAsync();
                 if (value is AdminEmployeesViewModel employees)
                     employees.Reset();
                 PageTitle = value is AdminDashboardViewModel ? "Dashboard" : value is AdminEmployeesViewModel ? "Çalışanlar" : value is AdminReportsViewModel ? "Raporlar" : "Ayarlar";

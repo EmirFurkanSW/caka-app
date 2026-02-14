@@ -8,7 +8,7 @@ public class ApiOptions
     /// <summary>
     /// API base URL (örn: https://localhost:5001 veya https://your-server.com/caka-api). Sonunda / olmamalı.
     /// </summary>
-    public string BaseUrl { get; set; } = "https://localhost:5001";
+    public string BaseUrl { get; set; } = "https://caka-api.onrender.com";
 
     /// <summary>
     /// İstek zaman aşımı (saniye).

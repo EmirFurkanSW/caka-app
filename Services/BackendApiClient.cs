@@ -67,6 +67,21 @@ public class BackendApiClient
         });
     }
 
+    /// <summary>Giriş yapmış kullanıcının kendi şifresini değiştirmesi (admin veya personel).</summary>
+    public (bool Success, string? Error) ChangeMyPassword(string currentPassword, string newPassword)
+    {
+        var resp = CallAsync(async () =>
+        {
+            SetBearer();
+            var req = new { CurrentPassword = currentPassword, NewPassword = newPassword };
+            var body = new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json");
+            var res = await _http.PostAsync("api/auth/change-my-password", body).ConfigureAwait(false);
+            var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<LoginResponseDto>(json, JsonOptions);
+        });
+        return (resp?.Success ?? false, resp?.Error);
+    }
+
     public IReadOnlyList<StoredUser> GetUsers()
     {
         return CallAsync(async () =>

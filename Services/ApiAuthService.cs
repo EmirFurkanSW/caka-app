@@ -41,4 +41,9 @@ public class ApiAuthService : IAuthService
         _tokenHolder.Token = null;
         CurrentUser = null;
     }
+
+    public (bool Success, string? Error) ChangeMyPassword(string currentPassword, string newPassword)
+    {
+        return _api.ChangeMyPassword(currentPassword, newPassword);
+    }
 }

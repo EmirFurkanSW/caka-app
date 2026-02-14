@@ -1,0 +1,19 @@
+========================================
+  CAKA Personel Takip - EXE Kullanım
+========================================
+
+Sadece "Caka Personel Takip.exe" dosyasını kopyalayıp çalıştırabilirsiniz. Config dosyası gerekmez.
+
+  1. EXE'ye çift tıklayın.
+  2. İnternet bağlantısı gerekir.
+  3. Varsayılan API adresi programın içinde (https://caka-api.onrender.com).
+
+API adresini değiştirmek isterseniz (isteğe bağlı):
+  Kullanıcı klasöründe AppData\Local\CAKA\ içine CAKA.config.json oluşturun:
+  {"ApiBaseUrl":"https://your-api.com","ApiTimeoutSeconds":30}
+
+İlk giriş (yönetici):
+  Kullanıcı adı: admin
+  Şifre: 1234
+
+.NET yüklemenize gerek yoktur; EXE kendi içinde çalışır.

@@ -12,10 +12,9 @@ public class PersonelProfileViewModel : ViewModelBase
     private string _confirmPassword = string.Empty;
     private string _statusMessage = string.Empty;
 
-    public PersonelProfileViewModel(IAuthService authService, IUserStore userStore)
+    public PersonelProfileViewModel(IAuthService authService)
     {
         _authService = authService;
-        _userStore = userStore;
         UserName = authService.CurrentUser?.UserName ?? "";
         DisplayName = authService.CurrentUser?.DisplayName ?? "";
         Department = authService.CurrentUser?.Department ?? "";
@@ -24,7 +23,6 @@ public class PersonelProfileViewModel : ViewModelBase
     }
 
     private readonly IAuthService _authService;
-    private readonly IUserStore _userStore;
 
     public string UserName { get; }
     public string DisplayName { get; }
@@ -63,21 +61,13 @@ public class PersonelProfileViewModel : ViewModelBase
     {
         if (!IsPersonel)
         {
-            StatusMessage = "Admin şifresi bu ekrandan değiştirilemez.";
+            StatusMessage = "Admin şifresi Ayarlar ekranından değiştirilir.";
             return;
         }
 
         if (string.IsNullOrWhiteSpace(CurrentPassword))
         {
             StatusMessage = "Mevcut şifrenizi girin.";
-            return;
-        }
-
-        var stored = _userStore.GetAll().FirstOrDefault(u =>
-            string.Equals(u.UserName, UserName, StringComparison.OrdinalIgnoreCase));
-        if (stored == null || stored.Password != CurrentPassword)
-        {
-            StatusMessage = "Mevcut şifre hatalı.";
             return;
         }
 
@@ -93,7 +83,13 @@ public class PersonelProfileViewModel : ViewModelBase
             return;
         }
 
-        _userStore.UpdatePassword(UserName, NewPassword);
+        var (success, error) = _authService.ChangeMyPassword(CurrentPassword, NewPassword);
+        if (!success)
+        {
+            StatusMessage = error ?? "Şifre güncellenemedi.";
+            return;
+        }
+
         CurrentPassword = "";
         NewPassword = "";
         ConfirmPassword = "";

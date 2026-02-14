@@ -1,0 +1,3 @@
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\publish\Caka Personel Takip.pdb
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\publish\CAKA.config.json
+C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\publish\Caka Personel Takip.exe

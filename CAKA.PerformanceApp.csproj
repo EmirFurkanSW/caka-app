@@ -18,8 +18,12 @@
 
   <ItemGroup>
     <Resource Include="Assets\Images\Logo.png" />
+    <!-- Config isteğe bağlı: EXE varsayılan API adresini kullanır; config yoksa da çalışır -->
     <None Update="CAKA.config.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <PropertyGroup>
+    <IncludeSymbolsInSingleFile>false</IncludeSymbolsInSingleFile>
+  </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" Version="5.0.0" />
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />

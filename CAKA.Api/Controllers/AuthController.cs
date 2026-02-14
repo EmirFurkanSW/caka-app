@@ -53,6 +53,28 @@ public class AuthController : ControllerBase
         });
     }
 
+    /// <summary>Giriş yapmış herhangi bir kullanıcı (admin veya personel) kendi şifresini değiştirir.</summary>
+    [HttpPost("change-my-password")]
+    [Authorize]
+    public async Task<ActionResult<LoginResponse>> ChangeMyPassword([FromBody] ChangePasswordRequest req)
+    {
+        var userName = User.FindFirstValue(ClaimTypes.Name);
+        if (string.IsNullOrEmpty(userName)) return Unauthorized();
+
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName);
+        if (user == null) return Forbid();
+
+        if (!BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
+            return Ok(new LoginResponse { Success = false, Error = "Mevcut şifre hatalı." });
+
+        if (string.IsNullOrWhiteSpace(req.NewPassword))
+            return Ok(new LoginResponse { Success = false, Error = "Yeni şifre girin." });
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(req.NewPassword);
+        await _db.SaveChangesAsync();
+        return Ok(new LoginResponse { Success = true });
+    }
+
     [HttpPost("change-admin-password")]
     [Authorize(Policy = "Admin")]
     public async Task<ActionResult<LoginResponse>> ChangeAdminPassword([FromBody] ChangePasswordRequest req)

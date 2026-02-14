@@ -12,7 +12,7 @@ dotnet run
 Varsayılan adres: **https://localhost:5001** ve **http://localhost:5000**
 
 İlk çalıştırmada SQLite veritabanı (`caka.db`) ve varsayılan admin hesabı oluşturulur:
-- **Kullanıcı adı:** oguzturunc
+- **Kullanıcı adı:** admin
 - **Şifre:** 1234
 
 ## Masaüstü uygulamasını bağlama

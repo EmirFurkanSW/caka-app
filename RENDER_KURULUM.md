@@ -105,7 +105,7 @@ git push -u origin main
 
 3. `caka-api` kısmını Render’da verdiğiniz Web Service adına göre düzenleyin (Dashboard’daki servis sayfasında tam URL yazar).
 4. Uygulamayı çalıştırıp giriş yapın:
-   - Admin: **oguzturunc** / **1234**  
+   - Admin: **admin** / **1234**  
    (İlk çalıştırmada API bu kullanıcıyı otomatik oluşturur.)
 
 ---

@@ -4,7 +4,7 @@ namespace CAKA.Api.Data;
 
 public static class SeedData
 {
-    private const string AdminUserName = "oguzturunc";
+    private const string AdminUserName = "admin";
     private const string DefaultAdminPassword = "1234";
 
     public static async Task EnsureAdminAsync(AppDbContext db)

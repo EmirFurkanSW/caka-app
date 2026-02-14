@@ -17,10 +17,21 @@ var connectionString = builder.Configuration.GetConnectionString("Default");
 var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    // Render PostgreSQL URL: postgres://user:pass@host:port/dbname
-    var uri = new Uri(databaseUrl);
-    var userInfo = uri.UserInfo.Split(':');
-    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=Require;Trust Server Certificate=true;";
+    try
+    {
+        // postgres:// veya postgresql://; şifrede : olabilir, sadece ilk : ile böl
+        var url = databaseUrl.Trim();
+        if (url.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+            url = "postgresql://" + url.Substring(11);
+        var uri = new Uri(url);
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var port = uri.Port > 0 ? uri.Port : 5432;
+        connectionString = $"Host={uri.Host};Port={port};Database={uri.AbsolutePath.TrimStart('/')};Username={userInfo[0]};Password={Uri.UnescapeDataString(userInfo.Length > 1 ? userInfo[1] : "")};SSL Mode=Require;Trust Server Certificate=true;";
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("DATABASE_URL parse error: " + ex.Message);
+    }
 }
 
 builder.Services.AddDbContext<AppDbContext>(options =>

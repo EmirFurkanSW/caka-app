@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("CAKA.PerformanceApp")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+429c48db76073e56175b03002fdb11e5f7d912cd")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+6fb4e4439e444239eb5d21984b37f03a11ee5f7c")]
 [assembly: System.Reflection.AssemblyProductAttribute("CAKA.PerformanceApp")]
 [assembly: System.Reflection.AssemblyTitleAttribute("CAKA.PerformanceApp")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

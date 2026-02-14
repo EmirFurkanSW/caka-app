@@ -28,10 +28,11 @@ public class LoginViewModel : ViewModelBase
         _lastLoginStore = lastLoginStore;
         LoginCommand = new RelayCommand(_ => DoLogin(), _ => !IsBusy && !string.IsNullOrWhiteSpace(UserName) && !string.IsNullOrWhiteSpace(Password));
 
-        var (_, lastUsed) = _lastLoginStore.GetAllLogins();
-        // Şifre artık saklanmıyor; sadece son kullanıcı adı (varsa) listeye eklenir ve seçilir.
-        if (!string.IsNullOrEmpty(lastUsed) && !_savedUserNames.Contains(lastUsed))
-            _savedUserNames.Add(lastUsed);
+        var (logins, lastUsed) = _lastLoginStore.GetAllLogins();
+        // Bu bilgisayarda daha önce giriş yapmış tüm kullanıcı adları listelenir; şifre saklanmaz.
+        foreach (var (u, _) in logins)
+            if (!string.IsNullOrEmpty(u) && !_savedUserNames.Contains(u))
+                _savedUserNames.Add(u);
         var preSelect = lastUsed ?? _savedUserNames.FirstOrDefault();
         if (!string.IsNullOrEmpty(preSelect))
         {

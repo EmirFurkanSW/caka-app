@@ -46,7 +46,11 @@ public class BackendApiClient
     {
         return CallAsync(async () =>
         {
-            var req = new { UserName = userName, Password = password };
+            var req = new
+            {
+                UserName = SecurityConstants.Truncate(userName, SecurityConstants.MaxUserNameLength),
+                Password = SecurityConstants.Truncate(password, SecurityConstants.MaxPasswordLength)
+            };
             var body = new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/auth/login", body).ConfigureAwait(false);
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -59,7 +63,11 @@ public class BackendApiClient
         return CallAsync(async () =>
         {
             SetBearer();
-            var req = new { CurrentPassword = currentPassword, NewPassword = newPassword };
+            var req = new
+            {
+                CurrentPassword = SecurityConstants.Truncate(currentPassword, SecurityConstants.MaxPasswordLength),
+                NewPassword = SecurityConstants.Truncate(newPassword, SecurityConstants.MaxPasswordLength)
+            };
             var body = new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/auth/change-admin-password", body).ConfigureAwait(false);
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -73,7 +81,11 @@ public class BackendApiClient
         var resp = CallAsync(async () =>
         {
             SetBearer();
-            var req = new { CurrentPassword = currentPassword, NewPassword = newPassword };
+            var req = new
+            {
+                CurrentPassword = SecurityConstants.Truncate(currentPassword, SecurityConstants.MaxPasswordLength),
+                NewPassword = SecurityConstants.Truncate(newPassword, SecurityConstants.MaxPasswordLength)
+            };
             var body = new StringContent(JsonSerializer.Serialize(req), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/auth/change-my-password", body).ConfigureAwait(false);
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -97,7 +109,14 @@ public class BackendApiClient
 
     public (bool Success, string? Error) AddUser(StoredUser user)
     {
-        var dto = new { user.UserName, user.Password, user.DisplayName, user.Department, user.IsSuspended };
+        var dto = new
+        {
+            UserName = SecurityConstants.Truncate(user.UserName, SecurityConstants.MaxUserNameLength),
+            Password = SecurityConstants.Truncate(user.Password, SecurityConstants.MaxPasswordLength),
+            DisplayName = SecurityConstants.Truncate(user.DisplayName, SecurityConstants.MaxDisplayNameLength),
+            Department = SecurityConstants.Truncate(user.Department, SecurityConstants.MaxDepartmentLength),
+            user.IsSuspended
+        };
         var resp = CallAsync(async () =>
         {
             SetBearer();
@@ -132,7 +151,14 @@ public class BackendApiClient
 
     public (bool Success, string? Error) UpdateUser(string userName, string displayName, string department, string? newPassword)
     {
-        var dto = new { UserName = userName, Password = newPassword ?? "", DisplayName = displayName, Department = department, IsSuspended = false };
+        var dto = new
+        {
+            UserName = SecurityConstants.Truncate(userName, SecurityConstants.MaxUserNameLength),
+            Password = SecurityConstants.Truncate(newPassword ?? "", SecurityConstants.MaxPasswordLength),
+            DisplayName = SecurityConstants.Truncate(displayName, SecurityConstants.MaxDisplayNameLength),
+            Department = SecurityConstants.Truncate(department, SecurityConstants.MaxDepartmentLength),
+            IsSuspended = false
+        };
         var resp = CallAsync(async () =>
         {
             SetBearer();
@@ -177,7 +203,14 @@ public class BackendApiClient
         {
             SetBearer();
             // Tarihi sadece gün olarak (yyyy-MM-dd) gonderiyoruz; timezone kayması olmaz.
-            var dto = new { workLog.Id, Date = workLog.Date.ToString("yyyy-MM-dd"), workLog.Description, workLog.Hours, workLog.UserName };
+            var dto = new
+            {
+                workLog.Id,
+                Date = workLog.Date.ToString("yyyy-MM-dd"),
+                Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
+                workLog.Hours,
+                UserName = SecurityConstants.Truncate(workLog.UserName, SecurityConstants.MaxUserNameLength)
+            };
             var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/worklogs", body).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
@@ -201,7 +234,12 @@ public class BackendApiClient
         return CallAsync(async () =>
         {
             SetBearer();
-            var dto = new { Date = workLog.Date.ToString("yyyy-MM-dd"), workLog.Description, workLog.Hours };
+            var dto = new
+            {
+                Date = workLog.Date.ToString("yyyy-MM-dd"),
+                Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
+                workLog.Hours
+            };
             var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
             var res = await _http.PutAsync($"api/worklogs/{workLog.Id}", body).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)

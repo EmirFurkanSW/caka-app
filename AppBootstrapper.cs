@@ -17,16 +17,18 @@ public static class AppBootstrapper
         var apiOptions = ApiOptionsLoader.Load();
         services.AddSingleton(apiOptions);
 
-        // HTTP client (API base URL ile)
+        // HTTP client (API base URL ile) - güvenlik: sadece izin verilen adresler kullanılır
         services.AddSingleton(sp =>
         {
             var opt = sp.GetRequiredService<ApiOptions>();
             var baseUrl = (opt.BaseUrl ?? "").TrimEnd('/');
-            if (string.IsNullOrEmpty(baseUrl)) baseUrl = "https://localhost:5001";
+            if (string.IsNullOrEmpty(baseUrl) || !ApiOptionsLoader.IsAllowedApiBaseUrl(baseUrl))
+                baseUrl = "https://caka-api.onrender.com";
+            var timeout = Math.Clamp(opt.TimeoutSeconds > 0 ? opt.TimeoutSeconds : 30, 5, 300);
             var client = new HttpClient
             {
                 BaseAddress = new Uri(baseUrl + "/"),
-                Timeout = TimeSpan.FromSeconds(opt.TimeoutSeconds > 0 ? opt.TimeoutSeconds : 30)
+                Timeout = TimeSpan.FromSeconds(timeout)
             };
             return client;
         });

@@ -125,6 +125,21 @@ public class AdminEmployeesViewModel : ViewModelBase
             StatusMessage = "Şifre girin.";
             return;
         }
+        if (userName.Length > SecurityConstants.MaxUserNameLength)
+        {
+            StatusMessage = $"Kullanıcı adı en fazla {SecurityConstants.MaxUserNameLength} karakter olabilir.";
+            return;
+        }
+        if (NewDisplayName.Trim().Length > SecurityConstants.MaxDisplayNameLength)
+        {
+            StatusMessage = $"Ad soyad en fazla {SecurityConstants.MaxDisplayNameLength} karakter olabilir.";
+            return;
+        }
+        if (NewDepartment.Trim().Length > SecurityConstants.MaxDepartmentLength)
+        {
+            StatusMessage = $"Departman en fazla {SecurityConstants.MaxDepartmentLength} karakter olabilir.";
+            return;
+        }
 
         _userStore.Add(new StoredUser
         {
@@ -187,6 +202,16 @@ public class AdminEmployeesViewModel : ViewModelBase
     private void SaveEdit()
     {
         if (string.IsNullOrWhiteSpace(EditingUserName)) return;
+        if (NewDisplayName.Trim().Length > SecurityConstants.MaxDisplayNameLength)
+        {
+            StatusMessage = $"Ad soyad en fazla {SecurityConstants.MaxDisplayNameLength} karakter olabilir.";
+            return;
+        }
+        if (NewDepartment.Trim().Length > SecurityConstants.MaxDepartmentLength)
+        {
+            StatusMessage = $"Departman en fazla {SecurityConstants.MaxDepartmentLength} karakter olabilir.";
+            return;
+        }
         _userStore.UpdateUserInfo(
             EditingUserName,
             NewDisplayName.Trim(),

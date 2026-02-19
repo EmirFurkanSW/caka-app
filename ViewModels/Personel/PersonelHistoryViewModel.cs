@@ -105,6 +105,12 @@ public class PersonelHistoryViewModel : ViewModelBase
     private void SaveWeekEdits(WeekWorkLogGroup group)
     {
         if (!group.IsCurrentWeek) return;
+        var tooLong = group.Entries.FirstOrDefault(log => log.Description != null && log.Description.Length > SecurityConstants.MaxDescriptionLength);
+        if (tooLong != null)
+        {
+            MessageBox.Show($"Açıklama en fazla {SecurityConstants.MaxDescriptionLength} karakter olabilir. Lütfen kısaltın.", "Uyarı", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
         try
         {
             foreach (var log in group.Entries)

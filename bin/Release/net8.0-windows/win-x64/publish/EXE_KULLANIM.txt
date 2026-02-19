@@ -2,9 +2,9 @@
   CAKA Personel Takip - EXE Kullanım
 ========================================
 
-Sadece "Caka Personel Takip.exe" dosyasını kopyalayıp çalıştırabilirsiniz. Config dosyası gerekmez.
+Tüm "publish" klasörünü (içindeki EXE + tüm dosya ve klasörlerle birlikte) olduğu gibi kopyalayın. Sadece EXE'yi alırsanız program çalışmaz; yanındaki dosyalar da gerekli.
 
-  1. EXE'ye çift tıklayın.
+  1. Klasördeki "Caka Personel Takip.exe" dosyasına çift tıklayın.
   2. İnternet bağlantısı gerekir.
   3. Varsayılan API adresi programın içinde (https://caka-api.onrender.com).
 
@@ -18,6 +18,16 @@ API adresini değiştirmek isterseniz (isteğe bağlı):
 
 .NET yüklemenize gerek yoktur; EXE kendi içinde çalışır.
 
-Windows güvenlik uyarısı çıkarsa:
-  • "Bilgisayarınızı korudu" penceresinde "Diğer bilgiler"e tıklayın, ardından "Yine de çalıştır" deyin.
-  • Veya EXE'ye sağ tıklayıp Özellikler → altta "Bu dosyayı engellemeyi kaldır" (Unblock) varsa işaretleyip Tamam deyin.
+--- "Akıllı Uygulama Denetimi" veya "Bilgisayarınızı korudu" engeli ---
+  Uygulama imzalı olmadığı için Windows ilk seferde engelleyebilir. Aşağıdakilerden biriyle açabilirsiniz:
+
+  YÖNTEM 1 (önerilen):
+    1. Engel penceresinde "Diğer bilgiler" / "More info" linkine tıklayın.
+    2. Altta çıkan "Yine de çalıştır" / "Run anyway" düğmesine tıklayın.
+    → Program açılır; bir sonraki çalıştırmada aynı uyarı genelde çıkmaz.
+
+  YÖNTEM 2:
+    EXE'ye sağ tık → Özellikler → En altta "Bu dosyayı engellemeyi kaldır" (Unblock) kutusu varsa işaretleyin → Tamam. Sonra EXE'yi tekrar çalıştırın.
+
+  YÖNTEM 3 (tüm bilinmeyen uygulamalar için):
+    Windows 11: Ayarlar → Güncelleme ve güvenlik → Windows Güvenliği → Uygulama ve tarayıcı denetimi → "Akıllı Uygulama Denetimi"ni Kapalı yapın. (Sistem genelinde kapalı olur.)

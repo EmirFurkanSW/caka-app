@@ -4,15 +4,15 @@
 winexe
 C#
 .cs
-C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\
+c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\
 CAKA.PerformanceApp
 none
 false
 TRACE;RELEASE;NET;NET8_0;NETCOREAPP
-C:\Users\izcif\Desktop\CAKA v1-14.02\App.xaml
+c:\Users\izcif\Desktop\CAKA v1-14.02\App.xaml
 13-2003067880
 
-67-1600938503
+68-1055032097
 228-303056269
 Styles\CorporateTheme.xaml;Styles\MaterialDesignOverrides.xaml;Views\Admin\AdminDashboardView.xaml;Views\Admin\AdminEmployeesView.xaml;Views\Admin\AdminReportsView.xaml;Views\Admin\AdminSettingsView.xaml;Views\Admin\AdminShellWindow.xaml;Views\LoginWindow.xaml;Views\Personel\PersonelAddWorkView.xaml;Views\Personel\PersonelDashboardView.xaml;Views\Personel\PersonelHistoryView.xaml;Views\Personel\PersonelProfileView.xaml;Views\Personel\PersonelShellWindow.xaml;
 

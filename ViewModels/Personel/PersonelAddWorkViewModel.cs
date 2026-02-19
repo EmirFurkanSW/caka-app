@@ -98,6 +98,11 @@ public class PersonelAddWorkViewModel : ViewModelBase
             StatusMessage = "En az bir satırda açıklama girin ve saat 0–24 arasında olsun.";
             return;
         }
+        if (validRows.Any(e => e.Description != null && e.Description.Length > SecurityConstants.MaxDescriptionLength))
+        {
+            StatusMessage = $"Açıklama en fazla {SecurityConstants.MaxDescriptionLength} karakter olabilir.";
+            return;
+        }
 
         try
         {

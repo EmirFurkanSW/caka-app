@@ -23,11 +23,8 @@
     <None Update="CAKA.config.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <PropertyGroup>
-    <IncludeSymbolsInSingleFile>false</IncludeSymbolsInSingleFile>
-    <!-- Tek EXE: tüm DLL ve runtime exe içine gömülür, kullanıcıya sadece bu dosya verilir -->
-    <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <!-- Klasik yapı: EXE + DLL'ler aynı klasörde (tek dosya değil; Windows güvenlik uyarısı daha az çıkar) -->
+    <PublishSingleFile>false</PublishSingleFile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <DebugType>none</DebugType>

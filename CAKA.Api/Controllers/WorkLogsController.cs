@@ -80,9 +80,10 @@ public class WorkLogsController : ControllerBase
 
         try
         {
+            // Kullanıcının seçtiği takvim günü (yıl/ay/gün) aynen saklanır; timezone kayması olmaz.
             var logDate = dto.Date;
-            if (logDate == default) logDate = DateTime.UtcNow.Date;
-            var dateUtc = DateTime.SpecifyKind(logDate.Date, DateTimeKind.Utc);
+            if (logDate == default) logDate = DateTime.UtcNow;
+            var dateUtc = new DateTime(logDate.Year, logDate.Month, logDate.Day, 0, 0, 0, DateTimeKind.Utc);
 
             var entity = new WorkLogEntity
             {
@@ -119,8 +120,9 @@ public class WorkLogsController : ControllerBase
         if (entity == null) return NotFound();
         if (!IsAdmin && entity.UserName != CurrentUserName) return Forbid();
 
-        var logDate = dto.Date == default ? DateTime.UtcNow.Date : dto.Date.Date;
-        entity.Date = DateTime.SpecifyKind(logDate, DateTimeKind.Utc);
+        // Takvim günü aynen korunur (timezone kayması önlenir).
+        var logDate = dto.Date == default ? DateTime.UtcNow : dto.Date;
+        entity.Date = new DateTime(logDate.Year, logDate.Month, logDate.Day, 0, 0, 0, DateTimeKind.Utc);
         entity.Description = dto.Description ?? "";
         entity.Hours = dto.Hours;
         await _db.SaveChangesAsync();

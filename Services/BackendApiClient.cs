@@ -176,7 +176,8 @@ public class BackendApiClient
         CallAsync(async () =>
         {
             SetBearer();
-            var dto = new { workLog.Id, workLog.Date, workLog.Description, workLog.Hours, workLog.UserName };
+            // Tarihi sadece gün olarak (yyyy-MM-dd) gonderiyoruz; timezone kayması olmaz.
+            var dto = new { workLog.Id, Date = workLog.Date.ToString("yyyy-MM-dd"), workLog.Description, workLog.Hours, workLog.UserName };
             var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/worklogs", body).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
@@ -199,7 +200,7 @@ public class BackendApiClient
         return CallAsync(async () =>
         {
             SetBearer();
-            var dto = new { workLog.Date, workLog.Description, workLog.Hours };
+            var dto = new { Date = workLog.Date.ToString("yyyy-MM-dd"), workLog.Description, workLog.Hours };
             var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
             var res = await _http.PutAsync($"api/worklogs/{workLog.Id}", body).ConfigureAwait(false);
             return res.IsSuccessStatusCode;

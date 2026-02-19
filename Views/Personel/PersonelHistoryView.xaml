@@ -8,9 +8,21 @@
         <StackPanel Margin="0,0,0,24">
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
                 <Grid>
-                    <TextBlock Text="İş geçmişi (haftalık)" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
-                    <Button Content="Yenile" Command="{Binding RefreshCommand}" HorizontalAlignment="Right"
-                            Padding="14,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="İş geçmişi (haftalık)" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                        <Button Content="Tüm haftaları PDF olarak kaydet" Command="{Binding ExportAllWeeksToPdfCommand}"
+                                Margin="0,0,8,0" Padding="14,8"
+                                Background="{StaticResource AccentBrush}" Foreground="White"/>
+                        <Button Content="Tüm haftaları Excel olarak kaydet" Command="{Binding ExportAllWeeksToExcelCommand}"
+                                Margin="0,0,8,0" Padding="14,8"
+                                Style="{StaticResource SecondaryButtonStyle}"/>
+                        <Button Content="Yenile" Command="{Binding RefreshCommand}"
+                                Padding="14,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -87,6 +99,16 @@
                                         <Run Text="Toplam çalışma süresi: "/>
                                         <Run Text="{Binding EntriesTotalHours, StringFormat='{}{0:N1} saat', Mode=OneWay}"/>
                                     </TextBlock>
+                                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                                        <Button Content="Bu haftayı PDF olarak kaydet" Command="{Binding DataContext.ExportWeekToPdfCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Margin="0,0,8,0" Padding="14,8"
+                                                Background="{StaticResource AccentBrush}" Foreground="White"/>
+                                        <Button Content="Bu haftayı Excel olarak kaydet" Command="{Binding DataContext.ExportWeekToExcelCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}"
+                                                Padding="14,8"
+                                                Style="{StaticResource SecondaryButtonStyle}"/>
+                                    </StackPanel>
                                 </StackPanel>
                             </Border>
                         </Expander>

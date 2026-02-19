@@ -99,21 +99,28 @@ public class PersonelAddWorkViewModel : ViewModelBase
             return;
         }
 
-        foreach (var row in validRows)
+        try
         {
-            _workLogService.Add(new WorkLog
+            foreach (var row in validRows)
             {
-                Date = date,
-                Description = row.Description.Trim(),
-                Hours = row.Hours!.Value,
-                UserName = _authService.CurrentUser?.UserName
-            });
+                _workLogService.Add(new WorkLog
+                {
+                    Date = date,
+                    Description = row.Description.Trim(),
+                    Hours = row.Hours!.Value,
+                    UserName = _authService.CurrentUser?.UserName
+                });
+            }
+
+            // Doldurulmuş satırları temizle (kaydedilenleri kaldır)
+            foreach (var row in validRows)
+                Entries.Remove(row);
+
+            StatusMessage = $"{validRows.Count} iş kaydı eklendi.";
         }
-
-        // Doldurulmuş satırları temizle (kaydedilenleri kaldır)
-        foreach (var row in validRows)
-            Entries.Remove(row);
-
-        StatusMessage = $"{validRows.Count} iş kaydı eklendi.";
+        catch (Exception ex)
+        {
+            StatusMessage = ex.Message;
+        }
     }
 }

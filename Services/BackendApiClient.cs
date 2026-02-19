@@ -183,7 +183,8 @@ public class BackendApiClient
             if (!res.IsSuccessStatusCode)
             {
                 var errBody = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                throw new InvalidOperationException("Sunucu hatası: " + errBody);
+                var msg = TryGetErrorMessage(errBody) ?? errBody ?? "Sunucu hatası.";
+                throw new InvalidOperationException(msg);
             }
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
             var created = JsonSerializer.Deserialize<WorkLog>(json, JsonOptions);
@@ -203,7 +204,13 @@ public class BackendApiClient
             var dto = new { Date = workLog.Date.ToString("yyyy-MM-dd"), workLog.Description, workLog.Hours };
             var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
             var res = await _http.PutAsync($"api/worklogs/{workLog.Id}", body).ConfigureAwait(false);
-            return res.IsSuccessStatusCode;
+            if (!res.IsSuccessStatusCode)
+            {
+                var err = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var msg = TryGetErrorMessage(err) ?? res.ReasonPhrase ?? "Güncelleme reddedildi.";
+                throw new InvalidOperationException(msg);
+            }
+            return true;
         });
     }
 
@@ -213,8 +220,29 @@ public class BackendApiClient
         {
             SetBearer();
             var res = await _http.DeleteAsync($"api/worklogs/{id}").ConfigureAwait(false);
-            return res.IsSuccessStatusCode;
+            if (!res.IsSuccessStatusCode)
+            {
+                var err = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                var msg = TryGetErrorMessage(err) ?? res.ReasonPhrase ?? "Silme reddedildi.";
+                throw new InvalidOperationException(msg);
+            }
+            return true;
         });
+    }
+
+    private static string? TryGetErrorMessage(string json)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(json)) return null;
+            var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.TryGetProperty("error", out var e)) return e.GetString();
+            if (doc.RootElement.TryGetProperty("message", out var m)) return m.GetString();
+            if (doc.RootElement.TryGetProperty("detail", out var d)) return d.GetString();
+            if (doc.RootElement.ValueKind == JsonValueKind.String) return doc.RootElement.GetString();
+        }
+        catch { }
+        return null;
     }
 
     public decimal GetTotalHoursForUser(string? userName, DateTime from, DateTime to)

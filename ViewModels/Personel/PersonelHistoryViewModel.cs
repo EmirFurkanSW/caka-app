@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Windows;
 using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
 using CAKA.PerformanceApp.Models;
@@ -84,13 +85,21 @@ public class PersonelHistoryViewModel : ViewModelBase
     private void SaveWeekEdits(WeekWorkLogGroup group)
     {
         if (!group.IsCurrentWeek) return;
-        foreach (var log in group.Entries)
+        try
         {
-            if (log.Hours < 0 || log.Hours > 24) continue;
-            _workLogService.Update(log);
+            foreach (var log in group.Entries)
+            {
+                if (log.Hours < 0 || log.Hours > 24) continue;
+                _workLogService.Update(log);
+            }
+            foreach (var id in _pendingDeleteIds)
+                _workLogService.Delete(id);
+            _pendingDeleteIds.Clear();
+            Refresh();
         }
-        foreach (var id in _pendingDeleteIds)
-            _workLogService.Delete(id);
-        _pendingDeleteIds.Clear();
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Kayıt güncellenemedi", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 }

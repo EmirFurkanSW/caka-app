@@ -121,20 +121,17 @@ C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.Performance
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.AssemblyInfoInputs.cache
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.AssemblyInfo.cs
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.csproj.CoreCompileInputs.cache
-C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.sourcelink.json
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.Per.44FC2CB6.Up2Date
 C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\CAKA.PerformanceApp.genruntimeconfig.cache
 c:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\Caka Personel Takip.exe
 c:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\Caka Personel Takip.deps.json
 c:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\Caka Personel Takip.runtimeconfig.json
 c:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\Caka Personel Takip.dll
-c:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\Caka Personel Takip.pdb
 c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Caka Personel Takip_MarkupCompile.cache
 c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Caka Personel Takip_MarkupCompile.lref
 c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Caka Personel Takip.g.resources
 c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Caka Personel Takip.dll
 c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\refint\Caka Personel Takip.dll
-c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Caka Personel Takip.pdb
 c:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\ref\Caka Personel Takip.dll
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\ClosedXML.dll
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\DocumentFormat.OpenXml.dll

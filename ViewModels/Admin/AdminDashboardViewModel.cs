@@ -74,7 +74,7 @@ public class AdminDashboardViewModel : ViewModelBase
                     .ToList();
                 var activities = _workLogService.GetAll()
                     .OrderByDescending(w => w.CreatedAt)
-                    .Take(10)
+                    .Take(50)
                     .Select(log =>
                     {
                         var desc = string.IsNullOrEmpty(log.Description) ? log.UserName ?? "" : $"{log.Description} ({log.UserName})";

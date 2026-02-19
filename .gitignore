@@ -1,0 +1,30 @@
+# Build
+bin/
+obj/
+[Bb]uild/
+[Oo]ut/
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# NuGet
+*.nupkg
+.nuget/packages/
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Publish (EXE çıktısı - isteğe bağlı tutulabilir)
+# bin/Release/net8.0-windows/win-x64/publish/
+
+# IDE
+.idea/
+*.rsuser
+
+# OS
+Thumbs.db
+.DS_Store

@@ -4,6 +4,7 @@
     <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
     <converters:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
     <converters:ChartBarWidthConverter x:Key="ChartBarWidthConverter"/>
+    <converters:ChartBarHeightConverter x:Key="ChartBarHeightConverter"/>
     <converters:DecimalToStringConverter x:Key="DecimalToStringConverter"/>
     <converters:BoolToStatusConverter x:Key="BoolToStatusConverter"/>
     <converters:BooleanToVisibilityInverseConverter x:Key="BooleanToVisibilityInverseConverter"/>

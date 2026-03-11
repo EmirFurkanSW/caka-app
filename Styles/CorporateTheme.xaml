@@ -151,7 +151,7 @@
         <Setter Property="HeaderTemplate">
             <Setter.Value>
                 <DataTemplate>
-                    <TextBlock x:Name="HeaderText" Text="{Binding}" FontSize="14" FontWeight="Normal" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="HeaderText" Text="{Binding}" FontSize="14" FontWeight="Normal" Foreground="{StaticResource TextSecondaryBrush}" VerticalAlignment="Center" TextTrimming="None"/>
                     <DataTemplate.Triggers>
                         <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=TabItem}}" Value="True">
                             <Setter TargetName="HeaderText" Property="Foreground" Value="{StaticResource AccentBrush}"/>
@@ -162,11 +162,11 @@
             </Setter.Value>
         </Setter>
         <Setter Property="Padding" Value="0,0,0,0"/>
-        <Setter Property="Margin" Value="0,0,24,0"/>
+        <Setter Property="Margin" Value="0,0,8,0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="TabItem">
-                    <Border x:Name="HeaderBorder" Padding="16,14" Background="Transparent" BorderThickness="0,0,0,3" BorderBrush="Transparent" Cursor="Hand" Margin="0,0,0,-1">
+                    <Border x:Name="HeaderBorder" Padding="24,14" MinWidth="240" Background="Transparent" BorderThickness="0,0,0,3" BorderBrush="Transparent" Cursor="Hand" Margin="0,0,0,-1">
                         <ContentPresenter ContentSource="Header" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>

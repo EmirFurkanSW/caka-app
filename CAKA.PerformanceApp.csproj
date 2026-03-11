@@ -28,6 +28,9 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)'=='Release'">
     <DebugType>none</DebugType>
+    <!-- Self-contained: Kullanıcıda .NET yüklü olmasa da EXE çalışır; tüm gereksinimler Publish klasöründe olur -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="MaterialDesignThemes" Version="5.0.0" />

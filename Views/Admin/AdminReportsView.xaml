@@ -116,7 +116,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <DataGrid Grid.Column="0" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob, Mode=TwoWay}"
-                                          Style="{StaticResource ReportsDataGridStyle}" Margin="0,0,12,0">
+                                          Style="{StaticResource ReportsDataGridStyle}" IsReadOnly="True" Margin="0,0,12,0">
                                     <DataGrid.Columns>
                                         <DataGridTextColumn Header="İş kodu" Binding="{Binding Code}" Width="120" MinWidth="100"/>
                                         <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="180"/>

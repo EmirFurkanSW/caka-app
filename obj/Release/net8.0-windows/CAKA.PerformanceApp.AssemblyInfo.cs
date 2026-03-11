@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Caka Personel Takip")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+931bce527900d9db80231c90cca93936197c0bb8")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a4920e0d0b1fe85f1e5f15f461961a5a0b7837c4")]
 [assembly: System.Reflection.AssemblyProductAttribute("Caka Personel Takip")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Caka Personel Takip")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

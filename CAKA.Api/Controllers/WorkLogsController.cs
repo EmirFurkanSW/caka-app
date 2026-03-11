@@ -58,7 +58,8 @@ public class WorkLogsController : ControllerBase
             {
                 Id = w.Id,
                 Date = w.Date,
-                Description = w.Description,
+                JobId = w.JobId,
+                Description = w.JobId != null ? (w.Job!.Code + " - " + w.Job.Description) : w.Description,
                 Hours = w.Hours,
                 UserName = w.UserName,
                 CreatedAt = w.CreatedAt
@@ -79,7 +80,8 @@ public class WorkLogsController : ControllerBase
             {
                 Id = w.Id,
                 Date = w.Date,
-                Description = w.Description,
+                JobId = w.JobId,
+                Description = w.JobId != null ? (w.Job!.Code + " - " + w.Job.Description) : w.Description,
                 Hours = w.Hours,
                 UserName = w.UserName,
                 CreatedAt = w.CreatedAt
@@ -106,11 +108,23 @@ public class WorkLogsController : ControllerBase
             if (!IsAdmin && !IsDateInCurrentWeek(dateUtc))
                 return BadRequest("Sadece bu haftanın iş kayıtları eklenebilir. Geçmiş veya gelecek hafta için kayıt eklenemez.");
 
+            string displayDescription = dto.Description ?? "";
+            if (dto.JobId.HasValue && dto.JobId.Value != Guid.Empty)
+            {
+                var job = await _db.Jobs.FindAsync(dto.JobId.Value);
+                if (job == null || !job.IsActive)
+                    return BadRequest("Seçilen iş bulunamadı veya artık aktif değil.");
+                displayDescription = job.Code + " - " + job.Description;
+            }
+            else if (!IsAdmin)
+                return BadRequest("Lütfen listeden bir iş seçin.");
+
             var entity = new WorkLogEntity
             {
                 Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
                 Date = dateUtc,
-                Description = dto.Description ?? "",
+                JobId = dto.JobId,
+                Description = displayDescription,
                 Hours = dto.Hours,
                 UserName = IsAdmin && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,
                 CreatedAt = DateTime.UtcNow
@@ -121,6 +135,7 @@ public class WorkLogsController : ControllerBase
             {
                 Id = entity.Id,
                 Date = entity.Date,
+                JobId = entity.JobId,
                 Description = entity.Description,
                 Hours = entity.Hours,
                 UserName = entity.UserName,
@@ -148,8 +163,18 @@ public class WorkLogsController : ControllerBase
         // Takvim günü aynen korunur (timezone kayması önlenir).
         var logDate = dto.Date == default ? DateTime.UtcNow : dto.Date;
         entity.Date = new DateTime(logDate.Year, logDate.Month, logDate.Day, 0, 0, 0, DateTimeKind.Utc);
-        entity.Description = dto.Description ?? "";
         entity.Hours = dto.Hours;
+        if (dto.JobId.HasValue && dto.JobId.Value != Guid.Empty)
+        {
+            var job = await _db.Jobs.FindAsync(dto.JobId.Value);
+            if (job != null && job.IsActive)
+            {
+                entity.JobId = dto.JobId;
+                entity.Description = job.Code + " - " + job.Description;
+            }
+        }
+        else
+            entity.Description = dto.Description ?? "";
         await _db.SaveChangesAsync();
         return NoContent();
     }

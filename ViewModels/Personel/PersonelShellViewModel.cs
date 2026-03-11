@@ -59,6 +59,8 @@ public class PersonelShellViewModel : ViewModelBase
             {
                 if (value is PersonelDashboardViewModel dashboard)
                     dashboard.Refresh();
+                if (value is PersonelAddWorkViewModel addWork)
+                    addWork.Refresh();
                 if (value is PersonelHistoryViewModel history)
                     history.Refresh();
                 PageTitle = value is PersonelDashboardViewModel ? "Dashboard" : value is PersonelAddWorkViewModel ? "İş Ekle" : value is PersonelHistoryViewModel ? "Geçmiş" : "Profil";

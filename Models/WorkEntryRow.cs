@@ -4,17 +4,17 @@ using System.Runtime.CompilerServices;
 namespace CAKA.PerformanceApp.Models;
 
 /// <summary>
-/// İş Ekle formunda tek satır: açıklama + saat.
+/// İş Ekle formunda tek satır: seçilen iş (admin tanımlı) + saat.
 /// </summary>
 public class WorkEntryRow : INotifyPropertyChanged
 {
-    private string _description = string.Empty;
+    private Job? _selectedJob;
     private decimal? _hours;
 
-    public string Description
+    public Job? SelectedJob
     {
-        get => _description;
-        set { _description = value ?? ""; OnPropertyChanged(); }
+        get => _selectedJob;
+        set { _selectedJob = value; OnPropertyChanged(); }
     }
 
     public decimal? Hours

@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {}
+    "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {}
   },
   "projects": {
-    "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {
+    "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
+        "projectUniqueName": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
         "projectName": "Caka Personel Takip",
-        "projectPath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
+        "projectPath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.PerformanceApp.csproj",
         "packagesPath": "C:\\Users\\izcif\\.nuget\\packages\\",
-        "outputPath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\obj\\",
+        "outputPath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\izcif\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -79,6 +79,20 @@
           ],
           "assetTargetFallback": true,
           "warn": true,
+          "downloadDependencies": [
+            {
+              "name": "Microsoft.AspNetCore.App.Runtime.win-x64",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.NETCore.App.Runtime.win-x64",
+              "version": "[8.0.24, 8.0.24]"
+            },
+            {
+              "name": "Microsoft.WindowsDesktop.App.Runtime.win-x64",
+              "version": "[8.0.24, 8.0.24]"
+            }
+          ],
           "frameworkReferences": {
             "Microsoft.NETCore.App": {
               "privateAssets": "all"
@@ -88,6 +102,11 @@
             }
           },
           "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
+        }
+      },
+      "runtimes": {
+        "win-x64": {
+          "#import": []
         }
       }
     }

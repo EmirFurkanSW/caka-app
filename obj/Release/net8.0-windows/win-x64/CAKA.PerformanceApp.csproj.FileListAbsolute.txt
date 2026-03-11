@@ -532,3 +532,5 @@ C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\ExcelNum
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\Irony.dll
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\SixLabors.Fonts.dll
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\win-x64\XLParser.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\win-x64\Views\Admin\AdminJobsView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\win-x64\Views\Admin\AdminJobsView.g.cs

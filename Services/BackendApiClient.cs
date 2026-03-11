@@ -107,6 +107,79 @@ public class BackendApiClient
         }) ?? new List<StoredUser>();
     }
 
+    /// <summary>Aktif işler (personel dropdown) veya tümü (admin yönetimi).</summary>
+    public IReadOnlyList<Job> GetJobs(bool activeOnly = false)
+    {
+        return CallAsync(async () =>
+        {
+            SetBearer();
+            var url = activeOnly ? "api/jobs?activeOnly=true" : "api/jobs";
+            var res = await _http.GetAsync(url).ConfigureAwait(false);
+            res.EnsureSuccessStatusCode();
+            var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var list = JsonSerializer.Deserialize<List<Job>>(json, JsonOptions);
+            return list ?? new List<Job>();
+        }) ?? new List<Job>();
+    }
+
+    public (bool Success, string? Error) AddJob(Job job)
+    {
+        try
+        {
+            CallAsync(async () =>
+            {
+                SetBearer();
+                var dto = new { job.Code, job.Description };
+                var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+                var res = await _http.PostAsync("api/jobs", body).ConfigureAwait(false);
+                var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!res.IsSuccessStatusCode)
+                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "İş eklenemedi.");
+                var created = JsonSerializer.Deserialize<Job>(json, JsonOptions);
+                if (created != null) { job.Id = created.Id; job.IsActive = created.IsActive; }
+            });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public (bool Success, string? Error) UpdateJob(Job job)
+    {
+        try
+        {
+            CallAsync(async () =>
+            {
+                SetBearer();
+                var dto = new { job.Code, job.Description, job.IsActive };
+                var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+                var res = await _http.PutAsync($"api/jobs/{job.Id}", body).ConfigureAwait(false);
+                if (!res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "Güncellenemedi.");
+                }
+            });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    public bool DeleteJob(Guid id)
+    {
+        return CallAsync(async () =>
+        {
+            SetBearer();
+            var res = await _http.DeleteAsync($"api/jobs/{id}").ConfigureAwait(false);
+            return res.IsSuccessStatusCode;
+        });
+    }
+
     public (bool Success, string? Error) AddUser(StoredUser user)
     {
         var dto = new
@@ -207,6 +280,7 @@ public class BackendApiClient
             {
                 workLog.Id,
                 Date = workLog.Date.ToString("yyyy-MM-dd"),
+                JobId = workLog.JobId,
                 Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
                 workLog.Hours,
                 UserName = SecurityConstants.Truncate(workLog.UserName, SecurityConstants.MaxUserNameLength)
@@ -237,6 +311,7 @@ public class BackendApiClient
             var dto = new
             {
                 Date = workLog.Date.ToString("yyyy-MM-dd"),
+                JobId = workLog.JobId,
                 Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
                 workLog.Hours
             };

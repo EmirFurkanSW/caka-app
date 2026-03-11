@@ -17,6 +17,7 @@ public class AdminShellViewModel : ViewModelBase
         AdminDashboardViewModel dashboardVm,
         AdminEmployeesViewModel employeesVm,
         AdminReportsViewModel reportsVm,
+        AdminJobsViewModel jobsVm,
         AdminSettingsViewModel settingsVm)
     {
         _authService = authService;
@@ -26,6 +27,7 @@ public class AdminShellViewModel : ViewModelBase
         {
             new("Dashboard", "ViewDashboard", () => CurrentPage = dashboardVm),
             new("Çalışanlar", "AccountGroup", () => CurrentPage = employeesVm),
+            new("İş Ekleme", "Briefcase", () => CurrentPage = jobsVm),
             new("Raporlar", "ChartBar", () => CurrentPage = reportsVm),
             new("Ayarlar", "Cog", () => CurrentPage = settingsVm)
         };
@@ -61,7 +63,9 @@ public class AdminShellViewModel : ViewModelBase
                     dashboard.RefreshAsync();
                 if (value is AdminEmployeesViewModel employees)
                     employees.Reset();
-                PageTitle = value is AdminDashboardViewModel ? "Dashboard" : value is AdminEmployeesViewModel ? "Çalışanlar" : value is AdminReportsViewModel ? "Raporlar" : "Ayarlar";
+                if (value is AdminJobsViewModel jobs)
+                    jobs.Refresh();
+                PageTitle = value is AdminDashboardViewModel ? "Dashboard" : value is AdminEmployeesViewModel ? "Çalışanlar" : value is AdminJobsViewModel ? "İş Ekleme" : value is AdminReportsViewModel ? "Raporlar" : "Ayarlar";
             }
         }
     }

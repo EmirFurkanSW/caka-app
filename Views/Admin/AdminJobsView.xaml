@@ -1,0 +1,64 @@
+<UserControl x:Class="CAKA.PerformanceApp.Views.Admin.AdminJobsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="600">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+                <StackPanel>
+                    <TextBlock Text="Yeni iş ekle" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
+                    <TextBlock Text="Çalışanlar bu işleri 'İş Ekle' sayfasında listeden seçip kaç saat çalıştıklarını girecek." Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,12"/>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="140"/>
+                            <ColumnDefinition Width="*" MinWidth="120"/>
+                            <ColumnDefinition Width="*" MinWidth="180"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <TextBlock Text="İş kodu" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding NewCode, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
+                                     ToolTip="Örn. TRCK-0064"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="12,0">
+                            <TextBlock Text="Açıklama" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                            <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
+                                     ToolTip="Örn. DemirExport"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Margin="12,0,12,0" VerticalAlignment="Bottom">
+                            <Button Content="İş ekle" Command="{Binding AddJobCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" Padding="20,10" HorizontalAlignment="Left"/>
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource CardStyle}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <TextBlock Text="Tanımlı işler" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Yenile" Command="{Binding RefreshCommand}" Margin="0,0,8,0"
+                                    Padding="12,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <Button Content="Seçileni sil" Command="{Binding DeleteJobCommand}"
+                                    Padding="12,8" Background="#E57373" Foreground="White"/>
+                        </StackPanel>
+                    </Grid>
+                    <DataGrid ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob, Mode=TwoWay}"
+                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              HeadersVisibility="Column" RowHeight="36" BorderThickness="0"
+                              BorderBrush="{StaticResource BorderBrush}">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="İş kodu" Binding="{Binding Code}" Width="120" MinWidth="100"/>
+                            <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="200"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

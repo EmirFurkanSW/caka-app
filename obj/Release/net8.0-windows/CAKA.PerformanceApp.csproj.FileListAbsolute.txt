@@ -139,3 +139,5 @@ C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\ExcelNumberForma
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\Irony.dll
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\SixLabors.Fonts.dll
 C:\Users\izcif\Desktop\CAKA v1-14.02\bin\Release\net8.0-windows\XLParser.dll
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminJobsView.baml
+C:\Users\izcif\Desktop\CAKA v1-14.02\obj\Release\net8.0-windows\Views\Admin\AdminJobsView.g.cs

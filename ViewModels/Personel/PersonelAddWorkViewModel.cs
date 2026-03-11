@@ -12,11 +12,13 @@ public class PersonelAddWorkViewModel : ViewModelBase
     private DateTime? _selectedDate = DateTime.Today;
     private string _statusMessage = string.Empty;
 
-    public PersonelAddWorkViewModel(IAuthService authService, IWorkLogService workLogService)
+    public PersonelAddWorkViewModel(IAuthService authService, IWorkLogService workLogService, BackendApiClient api)
     {
         _authService = authService;
         _workLogService = workLogService;
+        _api = api;
         Entries = new ObservableCollection<WorkEntryRow>();
+        Jobs = new ObservableCollection<Job>();
         var (start, end) = GetCurrentWeekRange();
         WeekStart = start;
         WeekEnd = end;
@@ -27,8 +29,11 @@ public class PersonelAddWorkViewModel : ViewModelBase
                 Entries.Remove(row);
         });
         SaveCommand = new RelayCommand(_ => SaveAll());
+        LoadJobs();
         AddRow(); // Başlangıçta bir satır
     }
+
+    private readonly BackendApiClient _api;
 
     /// <summary>
     /// Haftalık periyot: Pazartesi 00:00 - Pazar 23:59 (içinde bulunulan hafta).
@@ -45,6 +50,9 @@ public class PersonelAddWorkViewModel : ViewModelBase
 
     private readonly IAuthService _authService;
     private readonly IWorkLogService _workLogService;
+
+    /// <summary>Admin tarafından tanımlı aktif işler (çoktan seçmeli liste).</summary>
+    public ObservableCollection<Job> Jobs { get; }
 
     public DateTime? SelectedDate
     {
@@ -73,6 +81,19 @@ public class PersonelAddWorkViewModel : ViewModelBase
     public ICommand RemoveRowCommand { get; }
     public ICommand SaveCommand { get; }
 
+    private void LoadJobs()
+    {
+        Jobs.Clear();
+        foreach (var j in _api.GetJobs(activeOnly: true))
+            Jobs.Add(j);
+    }
+
+    /// <summary>Sayfa her açıldığında iş listesini yenile (admin yeni iş eklemiş olabilir).</summary>
+    public void Refresh()
+    {
+        LoadJobs();
+    }
+
     private void AddRow()
     {
         Entries.Add(new WorkEntryRow { Hours = null });
@@ -90,17 +111,12 @@ public class PersonelAddWorkViewModel : ViewModelBase
         }
 
         var validRows = Entries
-            .Where(e => !string.IsNullOrWhiteSpace(e.Description) && e.Hours.HasValue && e.Hours.Value >= 0 && e.Hours.Value <= 24)
+            .Where(e => e.SelectedJob != null && e.Hours.HasValue && e.Hours.Value >= 0 && e.Hours.Value <= 24)
             .ToList();
 
         if (validRows.Count == 0)
         {
-            StatusMessage = "En az bir satırda açıklama girin ve saat 0–24 arasında olsun.";
-            return;
-        }
-        if (validRows.Any(e => e.Description != null && e.Description.Length > SecurityConstants.MaxDescriptionLength))
-        {
-            StatusMessage = $"Açıklama en fazla {SecurityConstants.MaxDescriptionLength} karakter olabilir.";
+            StatusMessage = "En az bir satırda iş seçin ve saat 0–24 arasında girin.";
             return;
         }
 
@@ -111,7 +127,8 @@ public class PersonelAddWorkViewModel : ViewModelBase
                 _workLogService.Add(new WorkLog
                 {
                     Date = date,
-                    Description = row.Description.Trim(),
+                    JobId = row.SelectedJob!.Id,
+                    Description = row.SelectedJob.DisplayText,
                     Hours = row.Hours!.Value,
                     UserName = _authService.CurrentUser?.UserName
                 });

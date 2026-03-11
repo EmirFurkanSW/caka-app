@@ -16,7 +16,7 @@
                             Margin="0,0,0,20" Padding="10,8" FontSize="14"/>
 
                 <Grid Margin="0,0,0,12">
-                    <TextBlock Text="İşler (açıklama ve saat; birden fazla satır ekleyebilirsiniz)" Style="{StaticResource SubtitleTextStyle}" VerticalAlignment="Center"/>
+                    <TextBlock Text="İş seçin ve kaç saat çalıştığınızı girin (birden fazla satır ekleyebilirsiniz)" Style="{StaticResource SubtitleTextStyle}" VerticalAlignment="Center"/>
                     <Button Content="+ Satır ekle" Command="{Binding AddRowCommand}" HorizontalAlignment="Right"
                             Padding="14,8" Background="{StaticResource AccentBrush}" Foreground="White"/>
                 </Grid>
@@ -46,7 +46,16 @@
                         </Style>
                     </DataGrid.CellStyle>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="İş açıklaması" Binding="{Binding Description, UpdateSourceTrigger=PropertyChanged}" Width="*" MinWidth="200"/>
+                        <DataGridTemplateColumn Header="İş" Width="*" MinWidth="260">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding DataContext.Jobs, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                              SelectedItem="{Binding SelectedJob, UpdateSourceTrigger=PropertyChanged}"
+                                              DisplayMemberPath="DisplayText"
+                                              Padding="6,4" Margin="0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
                         <DataGridTemplateColumn Header="Saat" Width="80">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>

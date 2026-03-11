@@ -65,6 +65,8 @@ public class AdminShellViewModel : ViewModelBase
                     employees.Reset();
                 if (value is AdminJobsViewModel jobs)
                     jobs.Refresh();
+                if (value is AdminReportsViewModel reports)
+                    reports.Refresh();
                 PageTitle = value is AdminDashboardViewModel ? "Dashboard" : value is AdminEmployeesViewModel ? "Çalışanlar" : value is AdminJobsViewModel ? "İş Ekleme" : value is AdminReportsViewModel ? "Raporlar" : "Ayarlar";
             }
         }

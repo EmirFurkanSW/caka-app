@@ -71,7 +71,7 @@ public class AdminReportsViewModel : ViewModelBase
         return d.AddDays(-daysToMonday);
     }
 
-    private void Refresh()
+    public void Refresh()
     {
         AllUsers.Clear();
         AllUsers.Add(new StoredUser { UserName = "", DisplayName = "Tüm kullanıcılar" });

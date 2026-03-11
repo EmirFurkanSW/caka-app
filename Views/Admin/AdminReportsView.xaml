@@ -4,29 +4,31 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignHeight="500" d:DesignWidth="700">
-    <ScrollViewer VerticalScrollBarVisibility="Auto">
-        <StackPanel Margin="0,0,0,24">
-            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="İş kayıtları (haftalık)" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
-                    <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
-                        <Button Content="Tüm haftaları PDF olarak kaydet" Command="{Binding ExportAllWeeksToPdfCommand}"
-                                Margin="0,0,8,0" Padding="14,8" HorizontalAlignment="Right"
-                                Background="{StaticResource AccentBrush}" Foreground="White"/>
-                        <Button Content="Tüm haftaları Excel olarak kaydet" Command="{Binding ExportAllWeeksToExcelCommand}"
-                                Margin="0,0,8,0" Padding="14,8" HorizontalAlignment="Right"
-                                Style="{StaticResource SecondaryButtonStyle}"/>
-                        <Button Content="Yenile" Command="{Binding RefreshCommand}"
-                                Padding="14,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
+    <TabControl Margin="0,0,0,24" BorderThickness="0" Background="Transparent">
+        <TabItem Header="İş Kayıtları">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,0,24">
+                    <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="İş kayıtları (haftalık)" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Right">
+                                <Button Content="Tüm haftaları PDF olarak kaydet" Command="{Binding ExportAllWeeksToPdfCommand}"
+                                        Margin="0,0,8,0" Padding="14,8" HorizontalAlignment="Right"
+                                        Background="{StaticResource AccentBrush}" Foreground="White"/>
+                                <Button Content="Tüm haftaları Excel olarak kaydet" Command="{Binding ExportAllWeeksToExcelCommand}"
+                                        Margin="0,0,8,0" Padding="14,8" HorizontalAlignment="Right"
+                                        Style="{StaticResource SecondaryButtonStyle}"/>
+                                <Button Content="Yenile" Command="{Binding RefreshCommand}"
+                                        Padding="14,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
 
-            <ItemsControl ItemsSource="{Binding WeekGroups}">
+                    <ItemsControl ItemsSource="{Binding WeekGroups}">
                 <ItemsControl.ItemTemplate>
                     <DataTemplate>
                         <Expander Margin="0,0,0,12" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1"
@@ -100,6 +102,41 @@
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
-        </StackPanel>
-    </ScrollViewer>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+        <TabItem Header="Şirket İş Performansı">
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel Margin="0,0,0,24">
+                    <Border Style="{StaticResource CardStyle}" Margin="0,0,0,16">
+                        <StackPanel>
+                            <TextBlock Text="İşe göre çalışan performansı" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,12"/>
+                            <TextBlock Text="Aşağıdan bir iş seçip Excel olarak kaydet dediğinizde, o işte hangi çalışanın kaç saat çalıştığını gösteren tablo bilgisayarınıza kaydedilir. Dosya adı: iş kodu - açıklama.xlsx" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,16" TextWrapping="Wrap"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" MinWidth="300"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <DataGrid Grid.Column="0" ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob, Mode=TwoWay}"
+                                          AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                                          HeadersVisibility="Column" RowHeight="36" BorderThickness="0"
+                                          BorderBrush="{StaticResource BorderBrush}" Margin="0,0,12,0">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="İş kodu" Binding="{Binding Code}" Width="120" MinWidth="100"/>
+                                        <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="180"/>
+                                        <DataGridTextColumn Header="Durum" Binding="{Binding StatusText}" Width="90"/>
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <Button Content="Excel olarak kaydet" Command="{Binding ExportJobPerformanceCommand}"
+                                            Padding="16,10" Style="{StaticResource PrimaryButtonStyle}"
+                                            ToolTip="Seçili iş için çalışan–saat tablosunu Excel dosyası olarak kaydeder."/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </TabItem>
+    </TabControl>
 </UserControl>

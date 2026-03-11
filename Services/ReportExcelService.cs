@@ -98,4 +98,42 @@ public class ReportExcelService : IReportExcelService
         ws.Columns().AdjustToContents();
         wb.SaveAs(filePath);
     }
+
+    public void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
+        IReadOnlyList<(string UserName, string DisplayName, decimal TotalHours)> rows)
+    {
+        using var wb = new XLWorkbook();
+        var ws = wb.Worksheets.Add("İş performansı");
+
+        var row = 1;
+        ws.Cell(row, 1).Value = $"{jobCode} - {jobDescription}";
+        ws.Range(row, 1, row, 3).Merge();
+        ws.Row(row).Style.Font.Bold = true;
+        ws.Row(row).Style.Font.FontSize = 14;
+        row += 2;
+
+        ws.Cell(row, 1).Value = "Çalışan";
+        ws.Cell(row, 2).Value = "Toplam saat";
+        ws.Row(row).Style.Font.Bold = true;
+        row++;
+
+        foreach (var (_, displayName, totalHours) in rows.OrderByDescending(x => x.TotalHours))
+        {
+            ws.Cell(row, 1).Value = displayName;
+            ws.Cell(row, 2).Value = (double)totalHours;
+            ws.Cell(row, 2).Style.NumberFormat.Format = "0.0";
+            row++;
+        }
+
+        if (rows.Count > 0)
+        {
+            ws.Cell(row, 1).Value = "Genel toplam:";
+            ws.Cell(row, 2).Value = (double)rows.Sum(x => x.TotalHours);
+            ws.Cell(row, 2).Style.NumberFormat.Format = "0.0";
+            ws.Row(row).Style.Font.Bold = true;
+        }
+
+        ws.Columns().AdjustToContents();
+        wb.SaveAs(filePath);
+    }
 }

@@ -1,0 +1,4 @@
+{
+  "ApiBaseUrl": "https://caka-api.onrender.com",
+  "ApiTimeoutSeconds": 30
+}

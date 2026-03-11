@@ -9,15 +9,18 @@ namespace CAKA.PerformanceApp.ViewModels.Admin;
 
 public class AdminReportsViewModel : ViewModelBase
 {
-    public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportPdfService reportPdfService, IReportExcelService reportExcelService)
+    public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportPdfService reportPdfService, IReportExcelService reportExcelService, BackendApiClient api)
     {
         _workLogService = workLogService;
         _userStore = userStore;
         _reportPdfService = reportPdfService;
         _reportExcelService = reportExcelService;
+        _api = api;
         WeekGroups = new ObservableCollection<WeekWorkLogGroup>();
         AllUsers = new ObservableCollection<StoredUser>();
+        Jobs = new ObservableCollection<Job>();
         RefreshCommand = new RelayCommand(_ => Refresh());
+        ExportJobPerformanceCommand = new RelayCommand(_ => ExportJobPerformance(), _ => SelectedJob != null);
         ExportWeekToPdfCommand = new RelayCommand(param =>
         {
             if (param is WeekWorkLogGroup group)
@@ -42,15 +45,24 @@ public class AdminReportsViewModel : ViewModelBase
     private readonly IUserStore _userStore;
     private readonly IReportPdfService _reportPdfService;
     private readonly IReportExcelService _reportExcelService;
+    private readonly BackendApiClient _api;
+    private Job? _selectedJob;
 
     public ObservableCollection<WeekWorkLogGroup> WeekGroups { get; }
     public ObservableCollection<StoredUser> AllUsers { get; }
+    public ObservableCollection<Job> Jobs { get; }
+    public Job? SelectedJob
+    {
+        get => _selectedJob;
+        set => SetProperty(ref _selectedJob, value);
+    }
     public ICommand RefreshCommand { get; }
     public ICommand ExportWeekToPdfCommand { get; }
     public ICommand ExportAllWeeksToPdfCommand { get; }
     public ICommand ExportWeekToExcelCommand { get; }
     public ICommand ExportAllWeeksToExcelCommand { get; }
     public ICommand DeleteSelectedCommand { get; }
+    public ICommand ExportJobPerformanceCommand { get; }
 
     private static DateTime GetMonday(DateTime date)
     {
@@ -65,6 +77,14 @@ public class AdminReportsViewModel : ViewModelBase
         AllUsers.Add(new StoredUser { UserName = "", DisplayName = "Tüm kullanıcılar" });
         foreach (var u in _userStore.GetAll())
             AllUsers.Add(u);
+
+        Jobs.Clear();
+        try
+        {
+            foreach (var j in _api.GetJobs(activeOnly: false))
+                Jobs.Add(j);
+        }
+        catch { /* API eski olabilir */ }
 
         WeekGroups.Clear();
         var all = _workLogService.GetAll();
@@ -204,5 +224,42 @@ public class AdminReportsViewModel : ViewModelBase
             _workLogService.Delete(log.Id);
         Refresh();
         MessageBox.Show($"{toDelete.Count} adet iş kaydı silindi.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = System.IO.Path.GetInvalidFileNameChars();
+        foreach (var c in invalid)
+            name = name.Replace(c, '_');
+        return string.IsNullOrWhiteSpace(name) ? "Rapor" : name.Trim();
+    }
+
+    private void ExportJobPerformance()
+    {
+        if (SelectedJob == null) return;
+        var job = SelectedJob;
+        var allLogs = _workLogService.GetAll();
+        var byUser = allLogs
+            .Where(l => l.JobId == job.Id)
+            .GroupBy(l => l.UserName ?? "")
+            .Select(g => (UserName: g.Key, TotalHours: g.Sum(x => x.Hours)))
+            .Where(x => x.TotalHours > 0)
+            .ToList();
+        var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
+        var rows = byUser
+            .Select(x => (x.UserName, DisplayName: userNameToDisplay.GetValueOrDefault(x.UserName, x.UserName) ?? x.UserName, x.TotalHours))
+            .ToList();
+
+        var suggestedName = SanitizeFileName($"{job.Code} - {job.Description}.xlsx");
+        var dlg = new Microsoft.Win32.SaveFileDialog
+        {
+            Filter = "Excel dosyası|*.xlsx",
+            DefaultExt = ".xlsx",
+            FileName = suggestedName
+        };
+        if (dlg.ShowDialog() != true) return;
+
+        _reportExcelService.GenerateJobPerformanceReport(dlg.FileName, job.Code, job.Description, rows);
+        MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

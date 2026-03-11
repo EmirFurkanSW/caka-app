@@ -59,7 +59,7 @@ public class WorkLogsController : ControllerBase
                 Id = w.Id,
                 Date = w.Date,
                 JobId = w.JobId,
-                Description = w.JobId != null ? (w.Job!.Code + " - " + w.Job.Description) : w.Description,
+                Description = w.Description,
                 Hours = w.Hours,
                 UserName = w.UserName,
                 CreatedAt = w.CreatedAt
@@ -81,7 +81,7 @@ public class WorkLogsController : ControllerBase
                 Id = w.Id,
                 Date = w.Date,
                 JobId = w.JobId,
-                Description = w.JobId != null ? (w.Job!.Code + " - " + w.Job.Description) : w.Description,
+                Description = w.Description,
                 Hours = w.Hours,
                 UserName = w.UserName,
                 CreatedAt = w.CreatedAt

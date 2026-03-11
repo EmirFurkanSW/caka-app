@@ -84,6 +84,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
+    DbSchemaUpdater.EnsureJobsTableExists(db);
     await SeedData.EnsureAdminAsync(db);
 }
 

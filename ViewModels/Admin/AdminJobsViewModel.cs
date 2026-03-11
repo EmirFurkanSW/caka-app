@@ -24,6 +24,7 @@ public class AdminJobsViewModel : ViewModelBase
         RefreshCommand = new RelayCommand(_ => Refresh());
         AddJobCommand = new RelayCommand(_ => AddJob(), _ => !string.IsNullOrWhiteSpace(NewCode));
         DeleteJobCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedJob != null);
+        CloseOrReopenJobCommand = new RelayCommand(_ => CloseOrReopenSelected(), _ => SelectedJob != null);
         try { Refresh(); } catch { /* API eski olabilir; sayfa yine açılsın */ }
     }
 
@@ -54,6 +55,7 @@ public class AdminJobsViewModel : ViewModelBase
     public ICommand RefreshCommand { get; }
     public ICommand AddJobCommand { get; }
     public ICommand DeleteJobCommand { get; }
+    public ICommand CloseOrReopenJobCommand { get; }
 
     private void ClearStatus() => StatusMessage = string.Empty;
 
@@ -109,5 +111,21 @@ public class AdminJobsViewModel : ViewModelBase
         }
         else
             StatusMessage = "Silinemedi.";
+    }
+
+    /// <summary>İşi tamamlandı olarak kapat (çalışanlar artık seçemez) veya tekrar açar.</summary>
+    private void CloseOrReopenSelected()
+    {
+        if (SelectedJob == null) return;
+        var job = SelectedJob;
+        var kapat = job.IsActive;
+        var (success, error) = _api.UpdateJob(new Job { Id = job.Id, Code = job.Code, Description = job.Description, IsActive = !kapat });
+        if (success)
+        {
+            Refresh();
+            StatusMessage = kapat ? "İş kapatıldı. Çalışanlar bu işi artık seçemez." : "İş tekrar açıldı.";
+        }
+        else
+            StatusMessage = error ?? "Güncellenemedi.";
     }
 }

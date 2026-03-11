@@ -44,6 +44,9 @@
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
                             <Button Content="Yenile" Command="{Binding RefreshCommand}" Margin="0,0,8,0"
                                     Padding="12,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <Button Content="Kapat / Tekrar aç" Command="{Binding CloseOrReopenJobCommand}" Margin="0,0,8,0"
+                                    Padding="12,8" Background="#FF9800" Foreground="White"
+                                    ToolTip="Seçili işi tamamlandı olarak kapat (çalışanlar seçemez) veya tekrar açar."/>
                             <Button Content="Seçileni sil" Command="{Binding DeleteJobCommand}"
                                     Padding="12,8" Background="#E57373" Foreground="White"/>
                         </StackPanel>
@@ -55,6 +58,7 @@
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="İş kodu" Binding="{Binding Code}" Width="120" MinWidth="100"/>
                             <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Durum" Binding="{Binding StatusText}" Width="90" MinWidth="80"/>
                         </DataGrid.Columns>
                     </DataGrid>
                 </StackPanel>

@@ -12,4 +12,7 @@ public class Job
 
     /// <summary>ComboBox/lista gösterim: TRCK-0064 - DemirExport</summary>
     public string DisplayText => string.IsNullOrWhiteSpace(Description) ? Code : $"{Code} - {Description}";
+
+    /// <summary>Admin listesinde durum: Aktif / Kapatıldı</summary>
+    public string StatusText => IsActive ? "Aktif" : "Kapatıldı";
 }

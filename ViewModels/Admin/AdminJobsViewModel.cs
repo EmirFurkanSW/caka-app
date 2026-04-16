@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
@@ -24,6 +25,7 @@ public class AdminJobsViewModel : ViewModelBase
         RefreshCommand = new RelayCommand(_ => Refresh());
         AddJobCommand = new RelayCommand(_ => AddJob(), _ => !string.IsNullOrWhiteSpace(NewCode));
         DeleteJobCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedJob != null);
+        UpdateJobCommand = new RelayCommand(_ => UpdateSelected(), _ => SelectedJob != null && !string.IsNullOrWhiteSpace(NewCode));
         CloseOrReopenJobCommand = new RelayCommand(_ => CloseOrReopenSelected(), _ => SelectedJob != null);
         try { Refresh(); } catch { /* API eski olabilir; sayfa yine açılsın */ }
     }
@@ -34,7 +36,13 @@ public class AdminJobsViewModel : ViewModelBase
     public Job? SelectedJob
     {
         get => _selectedJob;
-        set => SetProperty(ref _selectedJob, value);
+        set
+        {
+            if (!SetProperty(ref _selectedJob, value)) return;
+            if (value == null) return;
+            NewCode = value.Code;
+            NewDescription = value.Description;
+        }
     }
     public string NewCode
     {
@@ -55,9 +63,14 @@ public class AdminJobsViewModel : ViewModelBase
     public ICommand RefreshCommand { get; }
     public ICommand AddJobCommand { get; }
     public ICommand DeleteJobCommand { get; }
+    public ICommand UpdateJobCommand { get; }
     public ICommand CloseOrReopenJobCommand { get; }
 
-    private void ClearStatus() => StatusMessage = string.Empty;
+    private void ClearStatus()
+    {
+        StatusMessage = string.Empty;
+        (UpdateJobCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
 
     public void Refresh()
     {
@@ -93,6 +106,40 @@ public class AdminJobsViewModel : ViewModelBase
         }
         else
             StatusMessage = error ?? "Eklenemedi.";
+    }
+
+    private void UpdateSelected()
+    {
+        if (SelectedJob == null)
+        {
+            StatusMessage = "Önce listeden bir iş seçin.";
+            return;
+        }
+
+        var code = NewCode.Trim();
+        if (string.IsNullOrEmpty(code))
+        {
+            StatusMessage = "İş kodu girin.";
+            return;
+        }
+
+        var dto = new Job
+        {
+            Id = SelectedJob.Id,
+            Code = code,
+            Description = NewDescription.Trim(),
+            IsActive = SelectedJob.IsActive
+        };
+
+        var (success, error) = _api.UpdateJob(dto);
+        if (success)
+        {
+            Refresh();
+            SelectedJob = Jobs.FirstOrDefault(x => x.Id == dto.Id);
+            StatusMessage = "İş güncellendi.";
+        }
+        else
+            StatusMessage = error ?? "Güncellenemedi.";
     }
 
     private void DeleteSelected()

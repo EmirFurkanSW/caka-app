@@ -8,7 +8,7 @@
         <StackPanel Margin="0,0,0,24">
             <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="Yeni iş ekle" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
+                    <TextBlock Text="Yeni iş ekle / güncelle" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
                     <TextBlock Text="Çalışanlar bu işleri 'İş Ekle' sayfasında listeden seçip kaç saat çalıştıklarını girecek." Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,12"/>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -27,9 +27,11 @@
                             <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
                                      ToolTip="Örn. DemirExport"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" Margin="12,0,12,0" VerticalAlignment="Bottom">
+                        <StackPanel Grid.Column="2" Margin="12,0,12,0" VerticalAlignment="Bottom" Orientation="Horizontal">
                             <Button Content="İş ekle" Command="{Binding AddJobCommand}"
-                                    Style="{StaticResource PrimaryButtonStyle}" Padding="20,10" HorizontalAlignment="Left"/>
+                                    Style="{StaticResource PrimaryButtonStyle}" Padding="20,10" HorizontalAlignment="Left" Margin="0,0,8,0"/>
+                            <Button Content="Seçileni güncelle" Command="{Binding UpdateJobCommand}"
+                                    Style="{StaticResource SecondaryButtonStyle}" Padding="16,10" HorizontalAlignment="Left"/>
                         </StackPanel>
                     </Grid>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"

@@ -55,6 +55,11 @@
                                     Visibility="{Binding IsEditMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </StackPanel>
                     </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Text="Saatlik ücret (TRY)" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                        <TextBox Text="{Binding NewHourlyRate, UpdateSourceTrigger=PropertyChanged}" Padding="10,8" Width="220" HorizontalAlignment="Left"
+                                 ToolTip="Örn: 250 veya 250,5"/>
+                    </StackPanel>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"
                                Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
                 </StackPanel>
@@ -86,6 +91,7 @@
                             <DataGridTextColumn Header="Kullanıcı adı" Binding="{Binding UserName}" Width="*" MinWidth="100"/>
                             <DataGridTextColumn Header="Ad Soyad" Binding="{Binding DisplayName}" Width="*" MinWidth="120"/>
                             <DataGridTextColumn Header="Departman" Binding="{Binding Department}" Width="*" MinWidth="100"/>
+                            <DataGridTextColumn Header="Saatlik ücret" Binding="{Binding HourlyRate, StringFormat='{}{0:N2}'}" Width="110"/>
                             <DataGridTextColumn Header="Durum" Binding="{Binding IsSuspended, Converter={StaticResource BoolToStatusConverter}}" Width="80"/>
                         </DataGrid.Columns>
                     </DataGrid>

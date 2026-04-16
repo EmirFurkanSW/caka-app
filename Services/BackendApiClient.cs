@@ -188,6 +188,7 @@ public class BackendApiClient
             Password = SecurityConstants.Truncate(user.Password, SecurityConstants.MaxPasswordLength),
             DisplayName = SecurityConstants.Truncate(user.DisplayName, SecurityConstants.MaxDisplayNameLength),
             Department = SecurityConstants.Truncate(user.Department, SecurityConstants.MaxDepartmentLength),
+            user.HourlyRate,
             user.IsSuspended
         };
         var resp = CallAsync(async () =>
@@ -222,7 +223,7 @@ public class BackendApiClient
         });
     }
 
-    public (bool Success, string? Error) UpdateUser(string userName, string displayName, string department, string? newPassword)
+    public (bool Success, string? Error) UpdateUser(string userName, string displayName, string department, decimal hourlyRate, string? newPassword)
     {
         var dto = new
         {
@@ -230,6 +231,7 @@ public class BackendApiClient
             Password = SecurityConstants.Truncate(newPassword ?? "", SecurityConstants.MaxPasswordLength),
             DisplayName = SecurityConstants.Truncate(displayName, SecurityConstants.MaxDisplayNameLength),
             Department = SecurityConstants.Truncate(department, SecurityConstants.MaxDepartmentLength),
+            HourlyRate = hourlyRate < 0 ? 0 : hourlyRate,
             IsSuspended = false
         };
         var resp = CallAsync(async () =>

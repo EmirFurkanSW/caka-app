@@ -7,6 +7,50 @@ namespace CAKA.Api.Data;
 /// </summary>
 public static class DbSchemaUpdater
 {
+    public static void EnsureUserHourlyRateColumn(AppDbContext db)
+    {
+        var provider = db.Database.ProviderName ?? "";
+        try
+        {
+            if (provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+                EnsureUserHourlyRateSqlite(db);
+            else if (provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+                EnsureUserHourlyRateNpgsql(db);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("DbSchemaUpdater (HourlyRate): " + ex.Message);
+        }
+    }
+
+    private static void EnsureUserHourlyRateSqlite(AppDbContext db)
+    {
+        try
+        {
+            db.Database.ExecuteSqlRaw("ALTER TABLE Users ADD COLUMN HourlyRate REAL NOT NULL DEFAULT 0;");
+        }
+        catch
+        {
+            // Sütun zaten varsa hata verir, yoksay
+        }
+    }
+
+    private static void EnsureUserHourlyRateNpgsql(AppDbContext db)
+    {
+        try
+        {
+            db.Database.ExecuteSqlRaw("""ALTER TABLE "Users" ADD COLUMN IF NOT EXISTS "HourlyRate" NUMERIC(12,2) NOT NULL DEFAULT 0;""");
+        }
+        catch
+        {
+            try
+            {
+                db.Database.ExecuteSqlRaw("""ALTER TABLE "Users" ADD COLUMN "HourlyRate" NUMERIC(12,2) NOT NULL DEFAULT 0;""");
+            }
+            catch { }
+        }
+    }
+
     public static void EnsureJobsTableExists(AppDbContext db)
     {
         var provider = db.Database.ProviderName ?? "";

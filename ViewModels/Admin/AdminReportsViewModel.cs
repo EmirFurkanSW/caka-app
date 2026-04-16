@@ -1,9 +1,11 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
 using CAKA.PerformanceApp.Models;
 using CAKA.PerformanceApp.Services;
+using CAKA.PerformanceApp.Views.Admin;
 
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
@@ -238,17 +240,25 @@ public class AdminReportsViewModel : ViewModelBase
     {
         if (SelectedJob == null) return;
         var job = SelectedJob;
-        var allLogs = _workLogService.GetAll();
-        var byUser = allLogs
+        var jobLogs = _workLogService.GetAll()
             .Where(l => l.JobId == job.Id)
-            .GroupBy(l => l.UserName ?? "")
-            .Select(g => (UserName: g.Key, TotalHours: g.Sum(x => x.Hours)))
-            .Where(x => x.TotalHours > 0)
             .ToList();
+
+        if (jobLogs.Count == 0)
+        {
+            MessageBox.Show("Seçilen iş için henüz çalışma kaydı yok.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+            return;
+        }
+
         var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
-        var rows = byUser
-            .Select(x => (x.UserName, DisplayName: userNameToDisplay.GetValueOrDefault(x.UserName, x.UserName) ?? x.UserName, x.TotalHours))
-            .ToList();
+        var hourlyRateByUser = _userStore.GetAll().ToDictionary(u => u.UserName, u => u.HourlyRate);
+
+        var inputDlg = new JobPerformanceExportDialog
+        {
+            Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow
+        };
+        if (inputDlg.ShowDialog() != true || inputDlg.TargetHoursPerEmployee is not decimal targetHours)
+            return;
 
         var suggestedName = SanitizeFileName($"{job.Code} - {job.Description}.xlsx");
         var dlg = new Microsoft.Win32.SaveFileDialog
@@ -259,7 +269,14 @@ public class AdminReportsViewModel : ViewModelBase
         };
         if (dlg.ShowDialog() != true) return;
 
-        _reportExcelService.GenerateJobPerformanceReport(dlg.FileName, job.Code, job.Description, rows);
+        _reportExcelService.GenerateJobPerformanceReport(
+            dlg.FileName,
+            job.Code,
+            job.Description,
+            jobLogs,
+            userNameToDisplay,
+            hourlyRateByUser,
+            targetHours);
         MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

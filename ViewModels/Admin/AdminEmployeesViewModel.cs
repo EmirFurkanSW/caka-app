@@ -13,6 +13,7 @@ public class AdminEmployeesViewModel : ViewModelBase
     private string _newPassword = string.Empty;
     private string _newDisplayName = string.Empty;
     private string _newDepartment = string.Empty;
+    private string _newHourlyRate = "0";
     private string _statusMessage = string.Empty;
     private StoredUser? _selectedUser;
     private bool _isEditMode;
@@ -64,6 +65,12 @@ public class AdminEmployeesViewModel : ViewModelBase
     {
         get => _newDepartment;
         set { if (SetProperty(ref _newDepartment, value ?? "")) ClearStatus(); }
+    }
+
+    public string NewHourlyRate
+    {
+        get => _newHourlyRate;
+        set { if (SetProperty(ref _newHourlyRate, value ?? "")) ClearStatus(); }
     }
 
     public string StatusMessage
@@ -141,12 +148,24 @@ public class AdminEmployeesViewModel : ViewModelBase
             return;
         }
 
+        if (!decimal.TryParse((NewHourlyRate ?? "").Trim().Replace(',', '.'), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var hourlyRate))
+        {
+            StatusMessage = "Saatlik ücret için geçerli bir sayı girin (örn: 250 veya 250,5).";
+            return;
+        }
+        if (hourlyRate < 0)
+        {
+            StatusMessage = "Saatlik ücret negatif olamaz.";
+            return;
+        }
+
         _userStore.Add(new StoredUser
         {
             UserName = userName,
             Password = NewPassword,
             DisplayName = NewDisplayName.Trim(),
             Department = NewDepartment.Trim(),
+            HourlyRate = hourlyRate,
             IsSuspended = false
         });
         Refresh();
@@ -154,6 +173,7 @@ public class AdminEmployeesViewModel : ViewModelBase
         NewPassword = "";
         NewDisplayName = "";
         NewDepartment = "";
+        NewHourlyRate = "0";
         StatusMessage = "Kullanıcı eklendi.";
     }
 
@@ -194,6 +214,7 @@ public class AdminEmployeesViewModel : ViewModelBase
         NewUserName = SelectedUser.UserName;
         NewDisplayName = SelectedUser.DisplayName;
         NewDepartment = SelectedUser.Department;
+        NewHourlyRate = SelectedUser.HourlyRate.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
         NewPassword = "";
         IsEditMode = true;
         StatusMessage = "";
@@ -212,10 +233,21 @@ public class AdminEmployeesViewModel : ViewModelBase
             StatusMessage = $"Departman en fazla {SecurityConstants.MaxDepartmentLength} karakter olabilir.";
             return;
         }
+        if (!decimal.TryParse((NewHourlyRate ?? "").Trim().Replace(',', '.'), System.Globalization.NumberStyles.Number, System.Globalization.CultureInfo.InvariantCulture, out var hourlyRate))
+        {
+            StatusMessage = "Saatlik ücret için geçerli bir sayı girin (örn: 250 veya 250,5).";
+            return;
+        }
+        if (hourlyRate < 0)
+        {
+            StatusMessage = "Saatlik ücret negatif olamaz.";
+            return;
+        }
         _userStore.UpdateUserInfo(
             EditingUserName,
             NewDisplayName.Trim(),
             NewDepartment.Trim(),
+            hourlyRate,
             string.IsNullOrWhiteSpace(NewPassword) ? null : NewPassword);
         ClearEdit();
         Refresh();
@@ -236,6 +268,7 @@ public class AdminEmployeesViewModel : ViewModelBase
         NewPassword = "";
         NewDisplayName = "";
         NewDepartment = "";
+        NewHourlyRate = "0";
     }
 
     /// <summary>Sayfa her açıldığında sıfırdan açılsın; seçim ve düzenleme modu temizlenir.</summary>

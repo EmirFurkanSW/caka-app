@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
             e.Property(x => x.PasswordHash).HasMaxLength(256);
             e.Property(x => x.DisplayName).HasMaxLength(256);
             e.Property(x => x.Department).HasMaxLength(256);
+            e.Property(x => x.HourlyRate).HasPrecision(12, 2);
             e.Property(x => x.Role).HasMaxLength(32);
         });
 

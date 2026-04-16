@@ -31,6 +31,7 @@ public class UsersController : ControllerBase
                 Password = "", // Şifre API'den gönderilmez
                 DisplayName = u.DisplayName,
                 Department = u.Department,
+                HourlyRate = u.HourlyRate,
                 IsSuspended = u.IsSuspended
             })
             .ToListAsync();
@@ -56,6 +57,7 @@ public class UsersController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             DisplayName = (dto.DisplayName ?? "").Trim(),
             Department = (dto.Department ?? "").Trim(),
+            HourlyRate = dto.HourlyRate < 0 ? 0 : dto.HourlyRate,
             IsSuspended = dto.IsSuspended,
             Role = "Personel"
         });
@@ -94,6 +96,7 @@ public class UsersController : ControllerBase
 
         user.DisplayName = (dto.DisplayName ?? "").Trim();
         user.Department = (dto.Department ?? "").Trim();
+        user.HourlyRate = dto.HourlyRate < 0 ? 0 : dto.HourlyRate;
         if (!string.IsNullOrWhiteSpace(dto.Password))
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
         await _db.SaveChangesAsync();

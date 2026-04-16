@@ -12,6 +12,6 @@ public interface IUserStore
     void Delete(string userName);
     void SetSuspended(string userName, bool suspended);
     void UpdatePassword(string userName, string newPassword);
-    void UpdateUserInfo(string userName, string displayName, string department, string? newPassword = null);
+    void UpdateUserInfo(string userName, string displayName, string department, decimal hourlyRate, string? newPassword = null);
     bool Exists(string userName);
 }

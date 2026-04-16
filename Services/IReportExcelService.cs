@@ -11,7 +11,10 @@ public interface IReportExcelService
         IReadOnlyList<WorkLog> entries,
         IReadOnlyDictionary<string, string> userNameToDisplayName);
 
-    /// <summary>Seçilen iş için çalışan bazlı toplam saat raporu.</summary>
+    /// <summary>Seçilen iş için çalışan bazlı profesyonel performans raporu.</summary>
     void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
-        IReadOnlyList<(string UserName, string DisplayName, decimal TotalHours)> rows);
+        IReadOnlyList<WorkLog> entries,
+        IReadOnlyDictionary<string, string> userNameToDisplayName,
+        IReadOnlyDictionary<string, decimal> hourlyRateByUser,
+        decimal patronTargetHoursPerEmployee);
 }

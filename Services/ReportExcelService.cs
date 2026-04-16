@@ -101,9 +101,7 @@ public class ReportExcelService : IReportExcelService
 
     public void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
         IReadOnlyList<WorkLog> entries,
-        IReadOnlyDictionary<string, string> userNameToDisplayName,
-        IReadOnlyDictionary<string, decimal> hourlyRateByUser,
-        decimal patronTargetHoursPerEmployee)
+        IReadOnlyDictionary<string, string> userNameToDisplayName)
     {
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("İş performansı");
@@ -133,27 +131,22 @@ public class ReportExcelService : IReportExcelService
         ws.Range(4, 1, 4, 12).Style.Font.Italic = true;
         ws.Range(4, 1, 4, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
 
-        ws.Cell(5, 1).Value = "Patron hedefi (çalışan başına maks. saat)";
-        ws.Cell(5, 2).Value = (double)patronTargetHoursPerEmployee;
-        ws.Cell(5, 2).Style.NumberFormat.Format = "0.0";
-        ws.Range(5, 1, 5, 2).Style.Font.Bold = true;
-        ws.Range(5, 1, 5, 2).Style.Fill.BackgroundColor = XLColor.FromHtml("#F3F6FA");
+        ws.Cell(5, 1).Value =
+            "D: çalışan için hedef (maks.) saat — elle. F: saatlik ücret (USD) — elle. E (verim): 2−(Gerçekleşen÷Hedef), %100 = hedef sürede. G (tahmini maliyet): Hedef saat × Saatlik ücret (D×F), D ve F dolunca otomatik.";
+        ws.Range(5, 1, 5, 12).Merge();
+        ws.Range(5, 1, 5, 12).Style.Font.Italic = true;
+        ws.Range(5, 1, 5, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
 
-        ws.Cell(6, 1).Value = "Verim sütunu: hedefe göre yüzde sapma = (Hedef ÷ Gerçekleşen − 1) × 100. Hedefe eşitse %0; hedeften hızlıysa pozitif; yavaşsa negatif.";
-        ws.Range(6, 1, 6, 12).Merge();
-        ws.Range(6, 1, 6, 12).Style.Font.Italic = true;
-        ws.Range(6, 1, 6, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
-
-        var headerRow = 8;
+        var headerRow = 6;
         var headers = new[]
         {
             "Çalışan",
             "Kullanıcı Adı",
             "Gerçekleşen Saat (bu iş)",
             "Maksimum Hedef Saat",
-            "Verim (hedefe göre %)",
-            "Saatlik Ücret (TRY)",
-            "Tahmini Maliyet (TRY)",
+            "Verim (100% = hedefe uygun)",
+            "Saatlik Ücret (USD) — elle",
+            "Tahmini Maliyet (USD) — D×F",
             "Kayıt Sayısı",
             "Çalışılan Gün",
             "İlk Kayıt",
@@ -182,41 +175,15 @@ public class ReportExcelService : IReportExcelService
                 var firstDate = logs.First().Date.Date;
                 var lastDate = logs.Last().Date.Date;
 
-                // Verim: hedefe göre % sapma — hedefe eşitse 0; örn. hedef 40, gerçek 20 → (40/20-1)*100 = %100
-                decimal efficiencyPercent;
-                if (actual <= 0m)
-                    efficiencyPercent = 0m;
-                else
-                    efficiencyPercent = (patronTargetHoursPerEmployee / actual - 1m) * 100m;
-
-                var rate = hourlyRateByUser.GetValueOrDefault(g.Key, 0m);
-                if (rate < 0) rate = 0m;
-                var cost = actual * rate;
-
-                string status;
-                if (actual <= 0m)
-                    status = "Kayıt yok / 0 saat";
-                else if (efficiencyPercent > 0.0001m)
-                    status = "Hedeften hızlı (pozitif verim)";
-                else if (efficiencyPercent < -0.0001m)
-                    status = "Hedeften yavaş (negatif verim)";
-                else
-                    status = "Hedefte (verim %0)";
-
                 return new
                 {
                     UserName = g.Key,
                     DisplayName = displayName,
                     Actual = actual,
-                    Target = patronTargetHoursPerEmployee,
-                    EfficiencyPercent = efficiencyPercent,
-                    Rate = rate,
-                    Cost = cost,
                     LogCount = logs.Count,
                     WorkDayCount = workDayCount,
                     FirstDate = firstDate,
-                    LastDate = lastDate,
-                    Status = status
+                    LastDate = lastDate
                 };
             })
             .OrderByDescending(x => x.Actual)
@@ -228,56 +195,52 @@ public class ReportExcelService : IReportExcelService
             ws.Cell(row, 1).Value = item.DisplayName;
             ws.Cell(row, 2).Value = item.UserName;
             ws.Cell(row, 3).Value = (double)item.Actual;
-            ws.Cell(row, 4).Value = (double)item.Target;
-            ws.Cell(row, 5).Value = (double)(item.EfficiencyPercent / 100m);
-            ws.Cell(row, 6).Value = (double)item.Rate;
-            ws.Cell(row, 7).Value = (double)item.Cost;
+            ws.Cell(row, 4).Clear();
+            ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
+            // Verim: 100% = hedef sürede; örn. D=10 C=8 → 2-C/D = 1,2 → %120
+            ws.Cell(row, 5).FormulaA1 = $"IF(OR(ISBLANK(D{row}),C{row}=0,D{row}=0),\"\",2-C{row}/D{row})";
+            ws.Cell(row, 6).Clear();
+            ws.Cell(row, 6).Style.NumberFormat.Format = "$#,##0.00";
+            // Tahmini maliyet = hedef saat (D) × saatlik ücret (F)
+            ws.Cell(row, 7).FormulaA1 = $"IF(OR(ISBLANK(D{row}),ISBLANK(F{row})),\"\",D{row}*F{row})";
             ws.Cell(row, 8).Value = item.LogCount;
             ws.Cell(row, 9).Value = item.WorkDayCount;
             ws.Cell(row, 10).Value = item.FirstDate;
             ws.Cell(row, 11).Value = item.LastDate;
-            ws.Cell(row, 12).Value = item.Status;
+            ws.Cell(row, 12).Value = "—";
 
             ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
-            ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
             ws.Cell(row, 5).Style.NumberFormat.Format = "0.0%";
-            ws.Cell(row, 6).Style.NumberFormat.Format = "#,##0.00";
-            ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(row, 6).Style.NumberFormat.Format = "$#,##0.00";
+            ws.Cell(row, 7).Style.NumberFormat.Format = "$#,##0.00";
             ws.Cell(row, 10).Style.DateFormat.Format = "dd.MM.yyyy";
             ws.Cell(row, 11).Style.DateFormat.Format = "dd.MM.yyyy";
-
-            if (item.EfficiencyPercent < -0.0001m)
-                ws.Cell(row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#F8D7DA");
-            else if (item.EfficiencyPercent > 0.0001m)
-                ws.Cell(row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#D4EDDA");
-            else
-                ws.Cell(row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8EEF5");
+            ws.Cell(row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#F3F6FA");
 
             row++;
         }
 
         if (grouped.Count > 0)
         {
-            var totalActual = grouped.Sum(x => x.Actual);
-            var totalTarget = patronTargetHoursPerEmployee * grouped.Count;
-            var totalCost = grouped.Sum(x => x.Cost);
+            var firstDataRow = headerRow + 1;
+            var lastDataRow = headerRow + grouped.Count;
 
             ws.Cell(row, 1).Value = "GENEL TOPLAM";
             ws.Range(row, 1, row, 2).Merge();
-            ws.Cell(row, 3).Value = (double)totalActual;
-            ws.Cell(row, 4).Value = (double)totalTarget;
-            ws.Cell(row, 5).Value = "";
-            ws.Cell(row, 6).Value = "";
-            ws.Cell(row, 7).Value = (double)totalCost;
-            ws.Cell(row, 8).Value = grouped.Sum(x => x.LogCount);
-            ws.Cell(row, 9).Value = grouped.Sum(x => x.WorkDayCount);
-            ws.Cell(row, 10).Value = "";
-            ws.Cell(row, 11).Value = "";
-            ws.Cell(row, 12).Value = "Özet: verim yüzdeleri satır bazlıdır; toplanmaz.";
+            ws.Cell(row, 3).FormulaA1 = $"SUM(C{firstDataRow}:C{lastDataRow})";
+            ws.Cell(row, 4).FormulaA1 = $"SUM(D{firstDataRow}:D{lastDataRow})";
+            ws.Cell(row, 5).Clear();
+            ws.Cell(row, 6).Clear();
+            ws.Cell(row, 7).FormulaA1 = $"SUM(G{firstDataRow}:G{lastDataRow})";
+            ws.Cell(row, 8).FormulaA1 = $"SUM(H{firstDataRow}:H{lastDataRow})";
+            ws.Cell(row, 9).FormulaA1 = $"SUM(I{firstDataRow}:I{lastDataRow})";
+            ws.Cell(row, 10).Clear();
+            ws.Cell(row, 11).Clear();
+            ws.Cell(row, 12).Value = "G sütunu tahmini maliyet toplamı (satır formülleri).";
 
             ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
             ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
-            ws.Cell(row, 7).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(row, 7).Style.NumberFormat.Format = "$#,##0.00";
             ws.Range(row, 1, row, 12).Style.Font.Bold = true;
             ws.Range(row, 1, row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8EEF5");
         }
@@ -289,18 +252,12 @@ public class ReportExcelService : IReportExcelService
         ws.SheetView.FreezeRows(headerRow);
         ws.Range(headerRow, 1, headerRow, headers.Length).SetAutoFilter();
 
-        ws.Column(1).Width = 24;
-        ws.Column(2).Width = 18;
-        ws.Column(3).Width = 18;
-        ws.Column(4).Width = 18;
-        ws.Column(5).Width = 22;
-        ws.Column(6).Width = 18;
-        ws.Column(7).Width = 20;
-        ws.Column(8).Width = 12;
-        ws.Column(9).Width = 12;
-        ws.Column(10).Width = 12;
-        ws.Column(11).Width = 12;
-        ws.Column(12).Width = 26;
+        // Üst birleşik başlıklar AdjustToContents ile A sütununu şişirmesin diye tablo için sabit genişlikler
+        var colWidths = new[] { 26d, 22d, 34d, 28d, 30d, 32d, 34d, 18d, 18d, 14d, 14d, 42d };
+        for (var c = 1; c <= 12; c++)
+            ws.Column(c).Width = colWidths[c - 1];
+        ws.Range(headerRow, 1, headerRow, 12).Style.Alignment.WrapText = true;
+        ws.Row(headerRow).Height = 36;
 
         wb.SaveAs(filePath);
     }

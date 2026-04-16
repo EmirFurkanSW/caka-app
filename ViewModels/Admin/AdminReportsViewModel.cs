@@ -5,8 +5,6 @@ using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
 using CAKA.PerformanceApp.Models;
 using CAKA.PerformanceApp.Services;
-using CAKA.PerformanceApp.Views.Admin;
-
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
 public class AdminReportsViewModel : ViewModelBase
@@ -251,14 +249,6 @@ public class AdminReportsViewModel : ViewModelBase
         }
 
         var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
-        var hourlyRateByUser = _userStore.GetAll().ToDictionary(u => u.UserName, u => u.HourlyRate);
-
-        var inputDlg = new JobPerformanceExportDialog
-        {
-            Owner = Application.Current.Windows.OfType<Window>().FirstOrDefault(w => w.IsActive) ?? Application.Current.MainWindow
-        };
-        if (inputDlg.ShowDialog() != true || inputDlg.TargetHoursPerEmployee is not decimal targetHours)
-            return;
 
         var suggestedName = SanitizeFileName($"{job.Code} - {job.Description}.xlsx");
         var dlg = new Microsoft.Win32.SaveFileDialog
@@ -274,9 +264,7 @@ public class AdminReportsViewModel : ViewModelBase
             job.Code,
             job.Description,
             jobLogs,
-            userNameToDisplay,
-            hourlyRateByUser,
-            targetHours);
+            userNameToDisplay);
         MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

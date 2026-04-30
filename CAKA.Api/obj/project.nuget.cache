@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "5aI3LRwRpgo=",
+  "dgSpecHash": "RZR+K/z8dMg=",
   "success": true,
-  "projectFilePath": "C:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj",
+  "projectFilePath": "c:\\Users\\izcif\\Desktop\\CAKA v1-14.02\\CAKA.Api\\CAKA.Api.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\izcif\\.nuget\\packages\\bcrypt.net-next\\4.0.3\\bcrypt.net-next.4.0.3.nupkg.sha512",
     "C:\\Users\\izcif\\.nuget\\packages\\microsoft.aspnetcore.authentication.jwtbearer\\8.0.0\\microsoft.aspnetcore.authentication.jwtbearer.8.0.0.nupkg.sha512",

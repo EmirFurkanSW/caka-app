@@ -44,7 +44,6 @@ public class AdminEmployeesViewModel : ViewModelBase
         StartEditCommand = new RelayCommand(_ => StartEdit(), _ => SelectedUser != null && !IsEditMode);
         SaveEditCommand = new RelayCommand(_ => SaveEdit());
         CancelEditCommand = new RelayCommand(_ => CancelEdit());
-        Refresh();
     }
 
     private readonly IUserStore _userStore;
@@ -154,12 +153,20 @@ public class AdminEmployeesViewModel : ViewModelBase
 
     private void ClearStatus() => StatusMessage = string.Empty;
 
-    private void Refresh()
+    /// <summary>API listesini yükler. Hata oluşursa yakalanır — giriş sırasında pencere açılışı çökmez.</summary>
+    public void Refresh()
     {
         Users.Clear();
-        foreach (var u in _userStore.GetAll())
-            Users.Add(u);
-        StatusMessage = string.Empty;
+        try
+        {
+            foreach (var u in _userStore.GetAll())
+                Users.Add(u);
+            StatusMessage = string.Empty;
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = "Kullanıcı listesi alınamadı: " + ex.Message;
+        }
     }
 
     private void AddUser()

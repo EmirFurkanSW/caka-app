@@ -62,7 +62,10 @@ public class AdminShellViewModel : ViewModelBase
                 if (value is AdminDashboardViewModel dashboard)
                     dashboard.RefreshAsync();
                 if (value is AdminEmployeesViewModel employees)
+                {
                     employees.Reset();
+                    employees.Refresh();
+                }
                 if (value is AdminJobsViewModel jobs)
                     jobs.Refresh();
                 if (value is AdminReportsViewModel reports)

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
@@ -115,8 +116,9 @@ public class BackendApiClient
             SetBearer();
             var url = activeOnly ? "api/jobs?activeOnly=true" : "api/jobs";
             var res = await _http.GetAsync(url).ConfigureAwait(false);
-            res.EnsureSuccessStatusCode();
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(FormatApiError(res, json));
             var list = JsonSerializer.Deserialize<List<Job>>(json, JsonOptions);
             return list ?? new List<Job>();
         }) ?? new List<Job>();
@@ -131,8 +133,9 @@ public class BackendApiClient
             var res = await _http.GetAsync($"api/jobs/{id}").ConfigureAwait(false);
             if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
                 return null;
-            res.EnsureSuccessStatusCode();
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            if (!res.IsSuccessStatusCode)
+                throw new InvalidOperationException(FormatApiError(res, json));
             return JsonSerializer.Deserialize<JobDetail>(json, JsonOptions);
         });
     }
@@ -149,7 +152,7 @@ public class BackendApiClient
                 var res = await _http.PostAsync("api/jobs", body).ConfigureAwait(false);
                 var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
                 if (!res.IsSuccessStatusCode)
-                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "İş eklenemedi.");
+                    throw new InvalidOperationException(FormatApiError(res, json));
                 var created = JsonSerializer.Deserialize<Job>(json, JsonOptions);
                 if (created != null) { job.Id = created.Id; job.IsActive = created.IsActive; }
             });
@@ -173,7 +176,7 @@ public class BackendApiClient
                 var res = await _http.PostAsync("api/jobs", body).ConfigureAwait(false);
                 var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
                 if (!res.IsSuccessStatusCode)
-                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "İş eklenemedi.");
+                    throw new InvalidOperationException(FormatApiError(res, json));
                 var created = JsonSerializer.Deserialize<JobDetail>(json, JsonOptions);
                 if (created != null)
                     detail.Id = created.Id;
@@ -199,7 +202,7 @@ public class BackendApiClient
                 if (!res.IsSuccessStatusCode)
                 {
                     var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "Güncellenemedi.");
+                    throw new InvalidOperationException(FormatApiError(res, json));
                 }
             });
             return (true, null);
@@ -223,7 +226,7 @@ public class BackendApiClient
                 if (!res.IsSuccessStatusCode)
                 {
                     var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "Güncellenemedi.");
+                    throw new InvalidOperationException(FormatApiError(res, json));
                 }
             });
             return (true, null);
@@ -429,13 +432,65 @@ public class BackendApiClient
         {
             if (string.IsNullOrWhiteSpace(json)) return null;
             var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.TryGetProperty("error", out var e)) return e.GetString();
+            if (doc.RootElement.TryGetProperty("error", out var e))
+            {
+                if (e.ValueKind == JsonValueKind.String) return e.GetString();
+            }
+            if (doc.RootElement.TryGetProperty("title", out var title) && title.ValueKind == JsonValueKind.String)
+            {
+                var t = title.GetString();
+                if (doc.RootElement.TryGetProperty("detail", out var det) && det.ValueKind == JsonValueKind.String)
+                {
+                    var d = det.GetString();
+                    if (!string.IsNullOrEmpty(t) && !string.IsNullOrEmpty(d)) return $"{t}: {d}";
+                }
+                if (!string.IsNullOrEmpty(t)) return t;
+            }
             if (doc.RootElement.TryGetProperty("message", out var m)) return m.GetString();
-            if (doc.RootElement.TryGetProperty("detail", out var d)) return d.GetString();
+            if (doc.RootElement.TryGetProperty("detail", out var d2) && d2.ValueKind == JsonValueKind.String) return d2.GetString();
+            if (doc.RootElement.TryGetProperty("errors", out var errors) && errors.ValueKind == JsonValueKind.Object)
+            {
+                var parts = new List<string>();
+                foreach (var prop in errors.EnumerateObject())
+                {
+                    if (prop.Value.ValueKind != JsonValueKind.Array) continue;
+                    foreach (var item in prop.Value.EnumerateArray())
+                    {
+                        if (item.ValueKind == JsonValueKind.String)
+                            parts.Add($"{prop.Name}: {item.GetString()}");
+                    }
+                }
+                if (parts.Count > 0) return string.Join("; ", parts);
+            }
             if (doc.RootElement.ValueKind == JsonValueKind.String) return doc.RootElement.GetString();
         }
         catch { }
         return null;
+    }
+
+    private static string FormatApiError(HttpResponseMessage response, string body)
+    {
+        var code = (int)response.StatusCode;
+        var summary = TryGetErrorMessage(body);
+        if (string.IsNullOrWhiteSpace(summary) && !string.IsNullOrWhiteSpace(body))
+        {
+            var t = body.Trim();
+            if (t.Length > 420) t = t[..420] + "…";
+            summary = t;
+        }
+        if (string.IsNullOrWhiteSpace(summary))
+            summary = response.ReasonPhrase ?? "Bilinmeyen hata";
+
+        var hint = code switch
+        {
+            (int)HttpStatusCode.Unauthorized => " Oturum süresi dolmuş olabilir; çıkış yapıp yeniden giriş yapın.",
+            (int)HttpStatusCode.Forbidden => " Bu işlem için Admin veya Yönetici hesabı gerekir.",
+            (int)HttpStatusCode.NotFound => " API uç noktası bulunamadı; CAKA.config.json içindeki ApiBaseUrl adresini kontrol edin.",
+            (int)HttpStatusCode.BadGateway or (int)HttpStatusCode.ServiceUnavailable or 504 =>
+                " Sunucu geçici olarak yanıt vermiyor (ör. Render uyku / yoğunluk). Bir dakika sonra yenileyin.",
+            _ => ""
+        };
+        return $"{code} — {summary}{hint}";
     }
 
     public decimal GetTotalHoursForUser(string? userName, DateTime from, DateTime to)

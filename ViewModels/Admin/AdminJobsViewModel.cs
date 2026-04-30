@@ -240,15 +240,25 @@ public class AdminJobsViewModel : ViewModelBase
                     HourlyRateCurrency = p.Currency is "TRY" or "USD" ? p.Currency : "TRY"
                 })
                 .ToList(),
-            StagePlans = EditPlans
-                .Where(p => !string.IsNullOrWhiteSpace(p.UserName))
-                .Select(p => new JobStagePlanItem
-                {
-                    StageIndex = p.StageIndex,
-                    UserName = p.UserName.Trim(),
-                    PlannedHours = p.PlannedHours
-                }).ToList()
+            StagePlans = BuildSanitizedStagePlans()
         };
+    }
+
+    /// <summary>API doğrulaması: aşama yokken plan gönderme; indeksleri mevcut aşama sayısına sıkıştır.</summary>
+    private List<JobStagePlanItem> BuildSanitizedStagePlans()
+    {
+        var n = EditStages.Count;
+        if (n == 0)
+            return new List<JobStagePlanItem>();
+        return EditPlans
+            .Where(p => !string.IsNullOrWhiteSpace(p.UserName))
+            .Where(p => p.StageIndex >= 0 && p.StageIndex < n)
+            .Select(p => new JobStagePlanItem
+            {
+                StageIndex = p.StageIndex,
+                UserName = p.UserName.Trim(),
+                PlannedHours = p.PlannedHours
+            }).ToList();
     }
 
     private void AddStageRow()
@@ -337,9 +347,9 @@ public class AdminJobsViewModel : ViewModelBase
             LoadUserOptions();
             StatusMessage = string.Empty;
         }
-        catch
+        catch (Exception ex)
         {
-            StatusMessage = "İş listesi yüklenemedi. API güncel mi kontrol edin.";
+            StatusMessage = "İş listesi alınamadı. " + ex.Message;
         }
 
         if (prevId.HasValue)

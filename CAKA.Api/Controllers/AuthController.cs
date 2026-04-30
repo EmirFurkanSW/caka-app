@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CAKA.Api;
 using CAKA.Api.Data;
 using CAKA.Api.Models;
 using CAKA.Api.Services;
@@ -41,7 +42,8 @@ public class AuthController : ControllerBase
         if (!BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
             return Ok(new LoginResponse { Success = false, Error = "Kullanıcı adı veya şifre hatalı." });
 
-        var token = _tokenService.GenerateToken(user.UserName, user.Role);
+        var jwtRole = JwtRoleNormalizer.ToPolicyRole(user.Role);
+        var token = _tokenService.GenerateToken(user.UserName, jwtRole);
         return Ok(new LoginResponse
         {
             Success = true,
@@ -49,7 +51,7 @@ public class AuthController : ControllerBase
             UserName = user.UserName,
             DisplayName = string.IsNullOrWhiteSpace(user.DisplayName) ? user.UserName : user.DisplayName,
             Department = user.Department ?? "",
-            Role = user.Role
+            Role = jwtRole
         });
     }
 
@@ -83,7 +85,7 @@ public class AuthController : ControllerBase
         if (string.IsNullOrEmpty(userName)) return Unauthorized();
 
         var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName);
-        if (user == null || user.Role != "Admin") return Forbid();
+        if (user == null || !JwtRoleNormalizer.IsAdminRole(user.Role)) return Forbid();
 
         if (!BCrypt.Net.BCrypt.Verify(req.CurrentPassword, user.PasswordHash))
             return Ok(new LoginResponse { Success = false, Error = "Mevcut şifre hatalı." });

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CAKA.Api;
 using CAKA.Api.Data;
 using CAKA.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -19,18 +20,7 @@ public class UsersController : ControllerBase
         _db = db;
     }
 
-    /// <summary>JWT rol claim biçimi farklı olduğunda da ana admin tespiti.</summary>
-    private static bool IsCallerFullAdmin(ClaimsPrincipal user)
-    {
-        if (user.IsInRole("Admin")) return true;
-        foreach (var c in user.Claims)
-        {
-            var isRoleClaim = c.Type == ClaimTypes.Role || c.Type == "role" || c.Type.EndsWith("/role", StringComparison.Ordinal);
-            if (isRoleClaim && string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-        return false;
-    }
+    private static bool IsCallerFullAdmin(ClaimsPrincipal user) => JwtRoleNormalizer.HasAdmin(user);
 
     [HttpGet]
     [Authorize(Policy = "AdminOrYonetici")]

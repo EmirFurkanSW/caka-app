@@ -1,14 +1,53 @@
+using System.Linq;
+using System.Security.Claims;
+
 namespace CAKA.Api;
 
 /// <summary>
 /// Veritabanında veya arayüzde "Yönetici" (ö ile) yazılsa bile JWT ve [Authorize] politikalarında
-/// tutarlı <see cref="Yonetici"/> (ASCII) kullanılır; aksi halde RequireRole ile 403 oluşur.
+/// tutarlı <see cref="Yonetici"/> (ASCII) kullanılır.
+/// JwtBearer'in <see cref="RoleClaimType"/> ayarıyla sınırlı kalmayıp tüm yaygın rol claim türleri okunur
+/// (<c>role</c>, <see cref="ClaimTypes.Role"/> vb.) böylece 403 kaybolur.
 /// </summary>
 public static class JwtRoleNormalizer
 {
     public const string Admin = "Admin";
     public const string Yonetici = "Yonetici";
     public const string Personel = "Personel";
+
+    public static bool IsRoleClaimType(string? claimType)
+    {
+        if (string.IsNullOrEmpty(claimType)) return false;
+        if (claimType == ClaimTypes.Role) return true;
+        if (string.Equals(claimType, "role", StringComparison.Ordinal)) return true;
+        return claimType.EndsWith("/role", StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>Principal üzerinden ham rol stringlerini politikaya göre sıkıştırır (tekilleştirmez).</summary>
+    public static IEnumerable<string> EnumerateNormalizedRoles(ClaimsPrincipal? user)
+    {
+        if (user?.Claims == null)
+            yield break;
+        foreach (var c in user.Claims.Where(c => IsRoleClaimType(c.Type)))
+        {
+            var n = ToPolicyRole(c.Value);
+            yield return n;
+        }
+    }
+
+    public static bool HasAdmin(ClaimsPrincipal? user) =>
+        EnumerateNormalizedRoles(user).Any(r => string.Equals(r, Admin, StringComparison.Ordinal));
+
+    public static bool HasAdminOrYonetici(ClaimsPrincipal? user) =>
+        EnumerateNormalizedRoles(user).Any(r =>
+            string.Equals(r, Admin, StringComparison.Ordinal) ||
+            string.Equals(r, Yonetici, StringComparison.Ordinal));
+
+    public static bool HasAdminPersonelOrYonetici(ClaimsPrincipal? user) =>
+        EnumerateNormalizedRoles(user).Any(r =>
+            string.Equals(r, Admin, StringComparison.Ordinal) ||
+            string.Equals(r, Personel, StringComparison.Ordinal) ||
+            string.Equals(r, Yonetici, StringComparison.Ordinal));
 
     public static string ToPolicyRole(string? raw)
     {

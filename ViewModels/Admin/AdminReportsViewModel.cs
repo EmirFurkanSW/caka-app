@@ -34,7 +34,6 @@ public class AdminReportsViewModel : ViewModelBase
             if (param is WeekWorkLogGroup group)
                 DeleteSelected(group);
         });
-        Refresh();
     }
 
     private readonly IWorkLogService _workLogService;
@@ -113,8 +112,15 @@ public class AdminReportsViewModel : ViewModelBase
     {
         AllUsers.Clear();
         AllUsers.Add(new StoredUser { UserName = "", DisplayName = "Tüm kullanıcılar" });
-        foreach (var u in _userStore.GetAll())
-            AllUsers.Add(u);
+        try
+        {
+            foreach (var u in _userStore.GetAll())
+                AllUsers.Add(u);
+        }
+        catch
+        {
+            /* api/users reddederse veya bağlantı yoksa giriş yine yapılabilsin */
+        }
 
         var preserveJobId = SelectedJob?.Id;
         SelectedJob = null;
@@ -129,21 +135,28 @@ public class AdminReportsViewModel : ViewModelBase
         ApplyJobFilter(preserveJobId);
 
         WeekGroups.Clear();
-        var all = _workLogService.GetAll();
-        var byWeek = all
-            .GroupBy(log => GetMonday(log.Date))
-            .OrderByDescending(g => g.Key)
-            .ToList();
-
-        foreach (var group in byWeek)
+        try
         {
-            var weekStart = group.Key;
-            var weekEnd = weekStart.AddDays(6);
-            var wg = new WeekWorkLogGroup { WeekStart = weekStart, WeekEnd = weekEnd, SelectedUserName = "" };
-            foreach (var log in group.OrderBy(l => l.Date).ThenBy(l => l.CreatedAt))
-                wg.Entries.Add(log);
-            wg.RefreshFiltered();
-            WeekGroups.Add(wg);
+            var all = _workLogService.GetAll();
+            var byWeek = all
+                .GroupBy(log => GetMonday(log.Date))
+                .OrderByDescending(g => g.Key)
+                .ToList();
+
+            foreach (var group in byWeek)
+            {
+                var weekStart = group.Key;
+                var weekEnd = weekStart.AddDays(6);
+                var wg = new WeekWorkLogGroup { WeekStart = weekStart, WeekEnd = weekEnd, SelectedUserName = "" };
+                foreach (var log in group.OrderBy(l => l.Date).ThenBy(l => l.CreatedAt))
+                    wg.Entries.Add(log);
+                wg.RefreshFiltered();
+                WeekGroups.Add(wg);
+            }
+        }
+        catch
+        {
+            /* worklogs/all yoksa raporlar sekmesi boş kalır; uygulama çökmez */
         }
     }
 

@@ -533,7 +533,12 @@ public class BackendApiClient
         }
         catch (HttpRequestException ex)
         {
-            throw new InvalidOperationException("Sunucuya bağlanılamadı. API adresini ve internet bağlantınızı kontrol edin. " + ex.Message, ex);
+            var m = ex.Message ?? "";
+            var is403 = m.Contains("403", StringComparison.Ordinal) || m.Contains("Forbidden", StringComparison.OrdinalIgnoreCase);
+            if (is403)
+                throw new InvalidOperationException(
+                    "Yetki hatası (403). Çıkış yapıp yeniden giriş yapın (yeni oturum JWT’si gerekir). Sunucu güncel kodu dağıttıysanız bu genelde düzelir. " + m, ex);
+            throw new InvalidOperationException("Sunucuya bağlanılamadı. API adresini ve internet bağlantınızı kontrol edin. " + m, ex);
         }
         catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
         {

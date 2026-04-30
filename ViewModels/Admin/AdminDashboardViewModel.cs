@@ -99,6 +99,16 @@ public class AdminDashboardViewModel : ViewModelBase
                         RecentActivities.Add(item);
                 }, DispatcherPriority.Normal);
             }
+            catch
+            {
+                dispatcher.InvokeAsync(() =>
+                {
+                    TotalEmployees = 0;
+                    WeeklyTotalHours = 0m;
+                    ChartData.Clear();
+                    RecentActivities.Clear();
+                }, DispatcherPriority.Normal);
+            }
             finally
             {
                 dispatcher.InvokeAsync(() => IsLoading = false, DispatcherPriority.Normal);

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CAKA.Api;
 using CAKA.Api.Data;
 using CAKA.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,7 @@ public class WorkLogsController : ControllerBase
     }
 
     private string? CurrentUserName => User.FindFirstValue(ClaimTypes.Name);
-    private bool IsAdminOrYonetici => User.IsInRole("Admin") || User.IsInRole("Yonetici");
+    private bool IsAdminOrYonetici => JwtRoleNormalizer.HasAdminOrYonetici(User);
 
     /// <summary>Sunucu saati (UTC) ile cari haftanın Pazartesi ve Pazar günlerini döner; tarih manipülasyonu engellenir.</summary>
     private static (DateTime WeekStart, DateTime WeekEnd) GetCurrentWeekUtc()

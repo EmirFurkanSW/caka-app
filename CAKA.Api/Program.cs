@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using System.Text;
+using CAKA.Api;
 using CAKA.Api.Data;
 using CAKA.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -59,17 +60,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = false,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(5),
-            // JWT içindeki "role" claim'i ile User.IsInRole / RequireRole tutarlı çalışsın
             NameClaimType = ClaimTypes.Name,
-            RoleClaimType = "role"
+            RoleClaimType = ClaimTypes.Role
         };
     });
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy("Admin", p => p.RequireRole("Admin"));
-    options.AddPolicy("AdminOrYonetici", p => p.RequireRole("Admin", "Yonetici"));
-    options.AddPolicy("AdminOrPersonel", p => p.RequireRole("Admin", "Personel", "Yonetici"));
+    options.AddPolicy("Admin", policy =>
+        policy.RequireAssertion(ctx => ctx.User?.Identity?.IsAuthenticated == true && JwtRoleNormalizer.HasAdmin(ctx.User)));
+    options.AddPolicy("AdminOrYonetici", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User?.Identity?.IsAuthenticated == true && JwtRoleNormalizer.HasAdminOrYonetici(ctx.User)));
+    options.AddPolicy("AdminOrPersonel", policy =>
+        policy.RequireAssertion(ctx =>
+            ctx.User?.Identity?.IsAuthenticated == true && JwtRoleNormalizer.HasAdminPersonelOrYonetici(ctx.User)));
 });
 
 builder.Services.AddControllers();

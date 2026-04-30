@@ -9,12 +9,13 @@ namespace CAKA.PerformanceApp.ViewModels.Personel;
 
 public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
 {
-    public PersonelHistoryViewModel(IAuthService authService, IWorkLogService workLogService, IReportPdfService reportPdfService, IReportExcelService reportExcelService)
+    public PersonelHistoryViewModel(IAuthService authService, IWorkLogService workLogService, IReportPdfService reportPdfService, IReportExcelService reportExcelService, BackendApiClient api)
     {
         _authService = authService;
         _workLogService = workLogService;
         _reportPdfService = reportPdfService;
         _reportExcelService = reportExcelService;
+        _api = api;
         WeekGroups = new ObservableCollection<WeekWorkLogGroup>();
         _pendingDeleteIds = new List<Guid>();
         RefreshCommand = new RelayCommand(_ => Refresh());
@@ -47,6 +48,7 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
     private readonly IWorkLogService _workLogService;
     private readonly IReportPdfService _reportPdfService;
     private readonly IReportExcelService _reportExcelService;
+    private readonly BackendApiClient _api;
     private readonly List<Guid> _pendingDeleteIds;
 
     public ObservableCollection<WeekWorkLogGroup> WeekGroups { get; }
@@ -162,7 +164,9 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
         };
         if (dlg.ShowDialog() != true) return;
         var userNameToDisplay = GetCurrentUserDisplayMap();
-        _reportExcelService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
+        var lookups = WeekExcelLookupBuilder.Build(group.Entries.ToList(), _api);
+        _reportExcelService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(),
+            userNameToDisplay, lookups);
     }
 
     private void ExportAllWeeksToPdf()
@@ -219,7 +223,9 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
         foreach (var group in WeekGroups)
         {
             var filePath = System.IO.Path.Combine(folder, $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.xlsx");
-            _reportExcelService.GenerateWeekReport(filePath, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
+            var lookups = WeekExcelLookupBuilder.Build(group.Entries.ToList(), _api);
+            _reportExcelService.GenerateWeekReport(filePath, group.WeekStart, group.WeekEnd, group.Entries.ToList(),
+                userNameToDisplay, lookups);
             count++;
         }
         MessageBox.Show($"{count} adet haftalık Excel kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);

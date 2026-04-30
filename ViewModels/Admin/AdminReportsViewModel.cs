@@ -176,7 +176,9 @@ public class AdminReportsViewModel : ViewModelBase, INavigationRefresh
         };
         if (dlg.ShowDialog() != true) return;
         var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
-        _reportExcelService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
+        var lookups = WeekExcelLookupBuilder.Build(group.Entries.ToList(), _api);
+        _reportExcelService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(),
+            userNameToDisplay, lookups);
         MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
@@ -208,7 +210,9 @@ public class AdminReportsViewModel : ViewModelBase, INavigationRefresh
         foreach (var group in WeekGroups)
         {
             var filePath = System.IO.Path.Combine(folder, $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.xlsx");
-            _reportExcelService.GenerateWeekReport(filePath, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
+            var lookups = WeekExcelLookupBuilder.Build(group.Entries.ToList(), _api);
+            _reportExcelService.GenerateWeekReport(filePath, group.WeekStart, group.WeekEnd, group.Entries.ToList(),
+                userNameToDisplay, lookups);
             count++;
         }
 

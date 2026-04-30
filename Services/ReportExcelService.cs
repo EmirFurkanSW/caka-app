@@ -6,96 +6,35 @@ namespace CAKA.PerformanceApp.Services;
 
 public class ReportExcelService : IReportExcelService
 {
+    private static readonly XLColor NavyHeader = XLColor.FromHtml("#1E2A38");
+    private static readonly XLColor StripSub = XLColor.FromHtml("#F3F6FA");
+    private static readonly XLColor CardBg = XLColor.FromHtml("#E8EEF5");
+    private const double KontenjanCarpani = 1.05;
+    private const double GenelGiderCarpani = 1.05;
+
     public void GenerateWeekReport(string filePath, DateTime weekStart, DateTime weekEnd,
         IReadOnlyList<WorkLog> entries,
-        IReadOnlyDictionary<string, string> userNameToDisplayName)
+        IReadOnlyDictionary<string, string> userNameToDisplayName,
+        WeekExcelLookups? lookups = null)
     {
+        lookups ??= new WeekExcelLookups();
+
         using var wb = new XLWorkbook();
-        var ws = wb.Worksheets.Add("Haftalık rapor");
+        FillWeekDetailWorksheet(wb.Worksheets.Add("Haftalık detay"),
+            weekStart, weekEnd, entries, userNameToDisplayName, lookups);
+        FillWeekPivotWorksheet(wb.Worksheets.Add("İş-aşama-çalışan"),
+            entries, userNameToDisplayName, lookups);
+        FillWeekEmployeeTotalsWorksheet(wb.Worksheets.Add("Çalışan özeti"),
+            entries, userNameToDisplayName, lookups);
+        var matrices = wb.Worksheets.Add("İş bazlı maliyet");
+        var rowMat = 1;
+        FillJobMatricesForLogs(matrices, ref rowMat, lookups, entries, userNameToDisplayName,
+            $"Haftalık dönem: {weekStart:dd.MM.yyyy} – {weekEnd:dd.MM.yyyy}");
 
-        var row = 1;
-        ws.Cell(row, 1).Value = $"Haftalık iş raporu: {weekStart:dd.MM.yyyy} - {weekEnd:dd.MM.yyyy}";
-        ws.Range(row, 1, row, 5).Merge();
-        ws.Row(row).Style.Font.Bold = true;
-        ws.Row(row).Style.Font.FontSize = 14;
-        row += 2;
+        matrices.Columns().AdjustToContents();
+        foreach (IXLWorksheet ws in wb.Worksheets.Where(w => w.Name != "İş bazlı maliyet"))
+            ws.Columns().AdjustToContents();
 
-        var allUserNames = userNameToDisplayName
-            .Where(kv => !string.IsNullOrWhiteSpace(kv.Key))
-            .OrderBy(kv => kv.Value, StringComparer.OrdinalIgnoreCase)
-            .Select(kv => kv.Key)
-            .ToList();
-
-        var summaryList = new List<(string DisplayName, decimal Hours)>();
-
-        foreach (var userName in allUserNames)
-        {
-            var displayName = userNameToDisplayName.GetValueOrDefault(userName, userName);
-            var userEntries = entries
-                .Where(e => string.Equals(e.UserName, userName, StringComparison.OrdinalIgnoreCase))
-                .OrderBy(e => e.Date).ThenBy(e => e.CreatedAt)
-                .ToList();
-            var totalHours = userEntries.Sum(e => e.Hours);
-            summaryList.Add((displayName, totalHours));
-
-            ws.Cell(row, 1).Value = $"Çalışan: {displayName}";
-            ws.Range(row, 1, row, 5).Merge();
-            ws.Row(row).Style.Font.Bold = true;
-            row++;
-
-            ws.Cell(row, 1).Value = "Tarih";
-            ws.Cell(row, 2).Value = "Gün";
-            ws.Cell(row, 3).Value = "İş açıklaması";
-            ws.Cell(row, 4).Value = "Saat";
-            ws.Row(row).Style.Font.Bold = true;
-            row++;
-
-            if (userEntries.Count == 0)
-            {
-                ws.Cell(row, 3).Value = "Bu hafta iş kaydı yok.";
-                row++;
-            }
-            else
-            {
-                foreach (var log in userEntries)
-                {
-                    ws.Cell(row, 1).Value = log.Date.ToString("dd.MM.yyyy", CultureInfo.InvariantCulture);
-                    ws.Cell(row, 2).Value = log.Date.ToString("dddd", new CultureInfo("tr-TR"));
-                    ws.Cell(row, 3).Value = log.Description;
-                    ws.Cell(row, 4).Value = (double)log.Hours;
-                    ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
-                    row++;
-                }
-            }
-
-            ws.Cell(row, 1).Value = "Toplam:";
-            ws.Cell(row, 4).Value = (double)totalHours;
-            ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
-            ws.Row(row).Style.Font.Bold = true;
-            row += 2;
-        }
-
-        ws.Cell(row, 1).Value = "Haftalık özet";
-        ws.Row(row).Style.Font.Bold = true;
-        row++;
-        ws.Cell(row, 1).Value = "Çalışan";
-        ws.Cell(row, 2).Value = "Toplam saat";
-        ws.Row(row).Style.Font.Bold = true;
-        row++;
-        var grandTotal = summaryList.Sum(x => x.Hours);
-        foreach (var (name, hours) in summaryList)
-        {
-            ws.Cell(row, 1).Value = name;
-            ws.Cell(row, 2).Value = (double)hours;
-            ws.Cell(row, 2).Style.NumberFormat.Format = "0.0";
-            row++;
-        }
-        ws.Cell(row, 1).Value = "Genel toplam:";
-        ws.Cell(row, 2).Value = (double)grandTotal;
-        ws.Cell(row, 2).Style.NumberFormat.Format = "0.0";
-        ws.Row(row).Style.Font.Bold = true;
-
-        ws.Columns().AdjustToContents();
         wb.SaveAs(filePath);
     }
 
@@ -105,172 +44,30 @@ public class ReportExcelService : IReportExcelService
         JobDetail? jobDetail = null)
     {
         using var wb = new XLWorkbook();
-        var ws = wb.Worksheets.Add("İş performansı");
-
         var periodStart = entries.Count > 0 ? entries.Min(x => x.Date).Date : DateTime.Today;
         var periodEnd = entries.Count > 0 ? entries.Max(x => x.Date).Date : DateTime.Today;
 
-        ws.Cell(1, 1).Value = "İş Performans Raporu (Yönetici)";
-        ws.Range(1, 1, 1, 12).Merge();
-        ws.Range(1, 1, 1, 12).Style.Font.Bold = true;
-        ws.Range(1, 1, 1, 12).Style.Font.FontSize = 18;
-        ws.Range(1, 1, 1, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#1E2A38");
-        ws.Range(1, 1, 1, 12).Style.Font.FontColor = XLColor.White;
-        ws.Range(1, 1, 1, 12).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        var ws = wb.Worksheets.Add("Maliyet ve aşama");
+        ws.Cell(1, 1).Value = "İş maliyeti ve aşama dağılımı";
+        StyleTitleMerge(ws.Range(1, 1, 1, 8));
 
-        ws.Cell(2, 1).Value = $"İş: {jobCode} - {jobDescription}";
-        ws.Range(2, 1, 2, 12).Merge();
-        ws.Range(2, 1, 2, 12).Style.Font.Bold = true;
-        ws.Range(2, 1, 2, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8EEF5");
+        ws.Cell(2, 1).Value = $"{jobCode} — {jobDescription}";
+        ws.Range(2, 1, 2, 8).Merge().Style.Fill.BackgroundColor = CardBg;
 
-        ws.Cell(3, 1).Value = $"Rapor dönemi (kayıtlar): {periodStart:dd.MM.yyyy} - {periodEnd:dd.MM.yyyy}";
-        ws.Range(3, 1, 3, 12).Merge();
-        ws.Range(3, 1, 3, 12).Style.Font.FontColor = XLColor.FromHtml("#3A4653");
+        ws.Cell(3, 1).Value =
+            $"Kayıtların tarih aralığı: {periodStart:dd.MM.yyyy} – {periodEnd:dd.MM.yyyy}";
+        ws.Range(3, 1, 3, 8).Merge();
 
-        ws.Cell(4, 1).Value = "Not: Bu rapor yalnızca seçilen işe ait kayıtları içerir. Diğer işler dahil edilmez.";
-        ws.Range(4, 1, 4, 12).Merge();
-        ws.Range(4, 1, 4, 12).Style.Font.Italic = true;
-        ws.Range(4, 1, 4, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
+        var lookups = BuildLookupsFromJobDetail(jobDetail, jobCode, jobDescription);
+        var r = 5;
+        FillJobMatricesForLogs(ws, ref r, lookups, entries, userNameToDisplayName, null);
 
-        ws.Cell(5, 1).Value =
-            "D: hedef (maks.) saat — elle. F: saatlik ücret — iş tanımında varsa otomatik (TL/USD), yoksa elle. E (verim): 2−(Gerçekleşen÷Hedef). G: tahmini maliyet D×F (F ile aynı para birimi).";
-        ws.Range(5, 1, 5, 12).Merge();
-        ws.Range(5, 1, 5, 12).Style.Font.Italic = true;
-        ws.Range(5, 1, 5, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
+        var noteRow = r + 1;
+        ws.Cell(noteRow, 1).Value =
+            "Not: Kontenjan ve genel gider çarpanları ×1,05. İndirim hücresi düzenlenebilir. Farklı para birimleri aynı toplam satırında birleştirilir; oran olarak yorumlamayın.";
+        ws.Range(noteRow, 1, noteRow, 8).Merge().Style.Font.Italic = true;
 
-        var headerRow = 6;
-        var headers = new[]
-        {
-            "Çalışan",
-            "Kullanıcı Adı",
-            "Gerçekleşen Saat (bu iş)",
-            "Maksimum Hedef Saat",
-            "Verim (100% = hedefe uygun)",
-            "Saatlik ücret (iş tanımı / elle)",
-            "Tahmini maliyet (D×F)",
-            "Kayıt Sayısı",
-            "Çalışılan Gün",
-            "İlk Kayıt",
-            "Son Kayıt",
-            "Durum"
-        };
-
-        for (var i = 0; i < headers.Length; i++)
-            ws.Cell(headerRow, i + 1).Value = headers[i];
-
-        var headerRange = ws.Range(headerRow, 1, headerRow, headers.Length);
-        headerRange.Style.Font.Bold = true;
-        headerRange.Style.Font.FontColor = XLColor.White;
-        headerRange.Style.Fill.BackgroundColor = XLColor.FromHtml("#1E2A38");
-        headerRange.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-
-        var grouped = entries
-            .Where(x => !string.IsNullOrWhiteSpace(x.UserName))
-            .GroupBy(x => x.UserName!)
-            .Select(g =>
-            {
-                var logs = g.OrderBy(x => x.Date).ThenBy(x => x.CreatedAt).ToList();
-                var displayName = userNameToDisplayName.GetValueOrDefault(g.Key, g.Key);
-                var actual = logs.Sum(x => x.Hours);
-                var workDayCount = logs.Select(x => x.Date.Date).Distinct().Count();
-                var firstDate = logs.First().Date.Date;
-                var lastDate = logs.Last().Date.Date;
-
-                return new
-                {
-                    UserName = g.Key,
-                    DisplayName = displayName,
-                    Actual = actual,
-                    LogCount = logs.Count,
-                    WorkDayCount = workDayCount,
-                    FirstDate = firstDate,
-                    LastDate = lastDate
-                };
-            })
-            .OrderByDescending(x => x.Actual)
-            .ToList();
-
-        var row = headerRow + 1;
-        foreach (var item in grouped)
-        {
-            var participant = jobDetail?.Participants?.FirstOrDefault(p =>
-                string.Equals(p.UserName, item.UserName, StringComparison.OrdinalIgnoreCase));
-            var isUsd = string.Equals(participant?.HourlyRateCurrency?.Trim(), "USD", StringComparison.OrdinalIgnoreCase);
-            var moneyFmt = isUsd ? "$#,##0.00" : "#,##0.00 \"₺\"";
-
-            ws.Cell(row, 1).Value = item.DisplayName;
-            ws.Cell(row, 2).Value = item.UserName;
-            ws.Cell(row, 3).Value = (double)item.Actual;
-            ws.Cell(row, 4).Clear();
-            ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
-            // Verim: 100% = hedef sürede; örn. D=10 C=8 → 2-C/D = 1,2 → %120
-            ws.Cell(row, 5).FormulaA1 = $"IF(OR(ISBLANK(D{row}),C{row}=0,D{row}=0),\"\",2-C{row}/D{row})";
-            if (participant != null)
-            {
-                ws.Cell(row, 6).Value = (double)participant.HourlyRate;
-                ws.Cell(row, 6).Style.NumberFormat.Format = moneyFmt;
-            }
-            else
-            {
-                ws.Cell(row, 6).Clear();
-                ws.Cell(row, 6).Style.NumberFormat.Format = moneyFmt;
-            }
-            // Tahmini maliyet = hedef saat (D) × saatlik ücret (F)
-            ws.Cell(row, 7).FormulaA1 = $"IF(OR(ISBLANK(D{row}),ISBLANK(F{row})),\"\",D{row}*F{row})";
-            ws.Cell(row, 8).Value = item.LogCount;
-            ws.Cell(row, 9).Value = item.WorkDayCount;
-            ws.Cell(row, 10).Value = item.FirstDate;
-            ws.Cell(row, 11).Value = item.LastDate;
-            ws.Cell(row, 12).Value = participant != null ? "İş ücreti tanımlı" : "—";
-
-            ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
-            ws.Cell(row, 5).Style.NumberFormat.Format = "0.0%";
-            ws.Cell(row, 7).Style.NumberFormat.Format = moneyFmt;
-            ws.Cell(row, 10).Style.DateFormat.Format = "dd.MM.yyyy";
-            ws.Cell(row, 11).Style.DateFormat.Format = "dd.MM.yyyy";
-            ws.Cell(row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#F3F6FA");
-
-            row++;
-        }
-
-        if (grouped.Count > 0)
-        {
-            var firstDataRow = headerRow + 1;
-            var lastDataRow = headerRow + grouped.Count;
-
-            ws.Cell(row, 1).Value = "GENEL TOPLAM";
-            ws.Range(row, 1, row, 2).Merge();
-            ws.Cell(row, 3).FormulaA1 = $"SUM(C{firstDataRow}:C{lastDataRow})";
-            ws.Cell(row, 4).FormulaA1 = $"SUM(D{firstDataRow}:D{lastDataRow})";
-            ws.Cell(row, 5).Clear();
-            ws.Cell(row, 6).Clear();
-            ws.Cell(row, 7).FormulaA1 = $"SUM(G{firstDataRow}:G{lastDataRow})";
-            ws.Cell(row, 8).FormulaA1 = $"SUM(H{firstDataRow}:H{lastDataRow})";
-            ws.Cell(row, 9).FormulaA1 = $"SUM(I{firstDataRow}:I{lastDataRow})";
-            ws.Cell(row, 10).Clear();
-            ws.Cell(row, 11).Clear();
-            ws.Cell(row, 12).Value = "G: tahmini maliyet toplamı (satırlar farklı para biriminde olabilir; toplam yalnızca referans).";
-
-            ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
-            ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
-            ws.Cell(row, 7).Style.NumberFormat.Format = "$#,##0.00";
-            ws.Range(row, 1, row, 12).Style.Font.Bold = true;
-            ws.Range(row, 1, row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8EEF5");
-        }
-
-        var dataEndRow = Math.Max(headerRow + 1, row);
-        var tableRange = ws.Range(headerRow, 1, dataEndRow, headers.Length);
-        tableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-        tableRange.Style.Border.InsideBorder = XLBorderStyleValues.Hair;
-        ws.SheetView.FreezeRows(headerRow);
-        ws.Range(headerRow, 1, headerRow, headers.Length).SetAutoFilter();
-
-        // Üst birleşik başlıklar AdjustToContents ile A sütununu şişirmesin diye tablo için sabit genişlikler
-        var colWidths = new[] { 26d, 22d, 34d, 28d, 30d, 32d, 34d, 18d, 18d, 14d, 14d, 42d };
-        for (var c = 1; c <= 12; c++)
-            ws.Column(c).Width = colWidths[c - 1];
-        ws.Range(headerRow, 1, headerRow, 12).Style.Alignment.WrapText = true;
-        ws.Row(headerRow).Height = 36;
+        ws.Columns().AdjustToContents();
 
         if (jobDetail != null)
             AppendJobDefinitionWorksheet(wb, jobDetail, jobCode, jobDescription);
@@ -278,7 +75,553 @@ public class ReportExcelService : IReportExcelService
         wb.SaveAs(filePath);
     }
 
-    /// <summary>İş detayındaki aşamalar, çalışan ücretleri ve plan saatleri — referans sayfası.</summary>
+    private enum HourFilter { All, UnassignedStage, ExactStage }
+
+    private static decimal SumHoursForUser(List<WorkLog> logs, string userColumn, HourFilter mode, Guid stageId = default)
+    {
+        var q = logs.Where(l => SameUser(l.UserName, userColumn));
+        return mode switch
+        {
+            HourFilter.All => q.Sum(l => l.Hours),
+            HourFilter.UnassignedStage => q.Where(l => l.JobStageId == null || l.JobStageId == Guid.Empty)
+                .Sum(l => l.Hours),
+            HourFilter.ExactStage => q.Where(l => l.JobStageId == stageId).Sum(l => l.Hours),
+            _ => 0
+        };
+    }
+
+    private static bool SameUser(string? logUser, string colUser) =>
+        string.Equals(logUser?.Trim(), colUser, StringComparison.OrdinalIgnoreCase);
+
+    private static List<Guid> OrderedStageIdsForJob(JobDetail? d, List<WorkLog> jobLogs)
+    {
+        var logged = jobLogs.Where(l => l.JobStageId.HasValue && l.JobStageId != Guid.Empty)
+            .Select(l => l.JobStageId!.Value).Distinct().ToList();
+        var hasUnassigned = jobLogs.Any(l => l.JobStageId == null || l.JobStageId == Guid.Empty);
+        var order = new List<Guid>();
+
+        if (d?.Stages.Count > 0)
+        {
+            foreach (var s in d.Stages.OrderBy(x => x.SortOrder))
+                if (logged.Contains(s.Id))
+                    order.Add(s.Id);
+            foreach (var id in logged.OrderBy(id => id))
+                if (!order.Contains(id))
+                    order.Add(id);
+        }
+        else
+        {
+            order.AddRange(logged.OrderBy(id => id));
+        }
+
+        if (hasUnassigned)
+            order.Insert(0, Guid.Empty);
+
+        return order;
+    }
+
+    private static WeekExcelLookups BuildLookupsFromJobDetail(JobDetail? jobDetail, string code, string desc)
+    {
+        var lookups = new WeekExcelLookups();
+        if (jobDetail == null || jobDetail.Id == Guid.Empty)
+            return lookups;
+
+        lookups.JobBasics[jobDetail.Id] = (code ?? "?", desc ?? "");
+        lookups.JobDetails[jobDetail.Id] = jobDetail;
+        return lookups;
+    }
+
+    private static void FillJobMatricesForLogs(IXLWorksheet ws, ref int startRow,
+        WeekExcelLookups lookups,
+        IReadOnlyList<WorkLog> entries,
+        IReadOnlyDictionary<string, string> userNameToDisplay,
+        string? periodNote)
+    {
+        var distinctJobs = entries
+            .Where(e => e.JobId.HasValue && e.JobId.Value != Guid.Empty)
+            .Select(e => e.JobId!.Value)
+            .Distinct()
+            .OrderBy(id => lookups.ResolveJob(id).Code, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        if (!string.IsNullOrWhiteSpace(periodNote))
+        {
+            ws.Cell(startRow, 1).Value = periodNote;
+            ws.Range(startRow, 1, startRow, 12).Merge();
+            ws.Cell(startRow, 1).Style.Font.Bold = true;
+            startRow += 2;
+        }
+
+        if (distinctJobs.Count == 0)
+        {
+            ws.Cell(startRow, 1).Value =
+                "Bu dönemde JobId içeren iş kaydı yok. Eski kayıtlar için 'Haftalık detay' sayfasına bakın.";
+            startRow += 3;
+            return;
+        }
+
+        foreach (var jobId in distinctJobs)
+        {
+            var jobLogs = entries.Where(e => e.JobId == jobId).ToList();
+            WriteSingleJobEconomicsBlock(ws, ref startRow, lookups, jobId, jobLogs, userNameToDisplay);
+            startRow += 3;
+        }
+    }
+
+    private static string ColLetter(int columnIndex1Based)
+    {
+        var n = columnIndex1Based;
+        var s = "";
+        while (n > 0)
+        {
+            n--;
+            s = (char)('A' + n % 26) + s;
+            n /= 26;
+        }
+
+        return string.IsNullOrEmpty(s) ? "A" : s;
+    }
+
+    private static void WriteSingleJobEconomicsBlock(IXLWorksheet ws, ref int startRow,
+        WeekExcelLookups lookups, Guid jobId, List<WorkLog> jobLogs,
+        IReadOnlyDictionary<string, string> userNameToDisplay)
+    {
+        var (code, jdesc) = lookups.ResolveJob(jobId);
+        lookups.JobDetails.TryGetValue(jobId, out var detail);
+
+        var userCols = jobLogs.Where(l => !string.IsNullOrWhiteSpace(l.UserName))
+            .Select(l => l.UserName!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(u => userNameToDisplay.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        ws.Cell(startRow, 1).Value = $"{code} — {jdesc}".Trim().TrimEnd('—', ' ');
+
+        if (userCols.Count == 0)
+        {
+            ws.Cell(startRow, 1).Value += " — kullanıcı adlı kayıt yok.";
+            startRow += 2;
+            return;
+        }
+
+        var lastCol = userCols.Count + 2;
+        ws.Range(startRow, 1, startRow, lastCol).Merge();
+        ws.Row(startRow).Style.Font.Bold = true;
+        ws.Row(startRow).Style.Font.FontSize = 13;
+        startRow++;
+
+        var stages = OrderedStageIdsForJob(detail, jobLogs);
+
+        ws.Cell(startRow, 1).Value = "";
+        for (var i = 0; i < userCols.Count; i++)
+            ws.Cell(startRow, i + 2).Value = userNameToDisplay.GetValueOrDefault(userCols[i], userCols[i]);
+
+        ws.Cell(startRow, lastCol).Value = "Toplam";
+        StyleHeader(ws.Range(startRow, 1, startRow, lastCol));
+        startRow++;
+
+        var matrixTopRow = startRow;
+
+        ws.Cell(startRow, 1).Value = "Saatlik ücret (iş tanımı)";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var rate = lookups.ParticipantHourly(userCols[i], jobId, out var usd);
+            var cell = ws.Cell(startRow, i + 2);
+            if (rate.HasValue)
+            {
+                cell.Value = (double)rate.Value;
+                cell.Style.NumberFormat.Format = usd ? "$#,##0.00" : "#,##0.00 \"₺\"";
+            }
+            else
+                cell.Value = "(tanımlı değil)";
+        }
+
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Mandayı sayısı (saat÷8)";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
+            ws.Cell(startRow, i + 2).Value = (double)(h / 8m);
+            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Toplam saat";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
+            ws.Cell(startRow, i + 2).Value = (double)h;
+            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Toplam maliyet";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var hrs = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
+            var rateOpt = lookups.ParticipantHourly(userCols[i], jobId, out var usd);
+            var cell = ws.Cell(startRow, i + 2);
+            if (rateOpt.HasValue)
+            {
+                cell.Value = (double)(hrs * rateOpt.Value);
+                cell.Style.NumberFormat.Format = usd ? "$#,##0.00" : "#,##0.00 \"₺\"";
+            }
+            else
+                cell.Value = "—";
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+        startRow++;
+
+        ws.Row(startRow).Height = 10;
+        startRow++;
+
+        foreach (var sid in stages)
+        {
+            var lbl = sid == Guid.Empty
+                ? "Aşamasız / genel"
+                : lookups.ResolveStage(jobId, sid);
+
+            ws.Cell(startRow, 1).Value = lbl;
+            for (var i = 0; i < userCols.Count; i++)
+            {
+                var h = sid == Guid.Empty
+                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage)
+                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid);
+                ws.Cell(startRow, i + 2).Value = (double)h;
+                ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
+            }
+
+            ws.Cell(startRow, lastCol).FormulaA1 =
+                $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+            ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
+            startRow++;
+        }
+
+        BorderRange(ws.Range(matrixTopRow - 1, 1, startRow - 1, lastCol));
+
+        var summaryHdr = startRow + 1;
+        ws.Cell(startRow, 1).Value = "Aşama bazında özet (maliyet + marj)";
+        ws.Cell(startRow, 1).Style.Font.Bold = true;
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Aşama";
+        ws.Cell(startRow, 2).Value = "Ham maliyet (Σ)";
+        ws.Cell(startRow, 3).Value = "Toplam saat";
+        ws.Cell(startRow, 4).Value = "Kontenjan sonrası (×1,05)";
+        ws.Cell(startRow, 5).Value = "G&A sonrası (×1,05)";
+        StyleHeader(ws.Range(startRow, 1, startRow, 5));
+        var summaryFirstRow = startRow + 1;
+        startRow++;
+
+        foreach (var sid in stages)
+        {
+            var lbl = sid == Guid.Empty
+                ? "Aşamasız / genel"
+                : lookups.ResolveStage(jobId, sid);
+
+            decimal raw = 0;
+            decimal hrs = 0;
+            foreach (var u in userCols)
+            {
+                var uh = sid == Guid.Empty
+                    ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage)
+                    : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid);
+
+                hrs += uh;
+                var rateOpt = lookups.ParticipantHourly(u, jobId, out _);
+                if (rateOpt.HasValue)
+                    raw += uh * rateOpt.Value;
+            }
+
+            var cont = raw * (decimal)KontenjanCarpani;
+            var ga = cont * (decimal)GenelGiderCarpani;
+
+            ws.Cell(startRow, 1).Value = lbl;
+            ws.Cell(startRow, 2).Value = (double)raw;
+            ws.Cell(startRow, 3).Value = (double)hrs;
+            ws.Cell(startRow, 4).Value = (double)cont;
+            ws.Cell(startRow, 5).Value = (double)ga;
+            ws.Cell(startRow, 2).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(startRow, 3).Style.NumberFormat.Format = "0.0";
+            ws.Cell(startRow, 4).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(startRow, 5).Style.NumberFormat.Format = "#,##0.00";
+            startRow++;
+        }
+
+        var summaryLastRow = startRow - 1;
+        ws.Cell(startRow, 1).Value = "Genel toplam";
+        ws.Cell(startRow, 2).FormulaA1 = $"SUM(B{summaryFirstRow}:B{summaryLastRow})";
+        ws.Cell(startRow, 3).FormulaA1 = $"SUM(C{summaryFirstRow}:C{summaryLastRow})";
+        ws.Cell(startRow, 4).FormulaA1 = $"SUM(D{summaryFirstRow}:D{summaryLastRow})";
+        ws.Cell(startRow, 5).FormulaA1 = $"SUM(E{summaryFirstRow}:E{summaryLastRow})";
+        ws.Range(startRow, 1, startRow, 5).Style.Font.Bold = true;
+        ws.Range(startRow, 1, startRow, 5).Style.Fill.BackgroundColor = CardBg;
+        var grandGaRowNum = startRow;
+        BorderRange(ws.Range(summaryHdr - 1, 1, startRow, 5));
+
+        startRow += 2;
+        ws.Cell(startRow, 1).Value = "İndirim tutarı:";
+        ws.Cell(startRow, 2).Value = 0;
+        ws.Cell(startRow, 2).Style.NumberFormat.Format = "#,##0.00";
+        var discountRowNum = startRow;
+        BorderRange(ws.Range(startRow, 1, startRow, 2));
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Net (G&A − indirim):";
+        ws.Cell(startRow, 2).FormulaA1 =
+            $"{ColLetter(5)}{grandGaRowNum}-{ColLetter(2)}{discountRowNum}";
+        ws.Cell(startRow, 2).Style.NumberFormat.Format = "#,##0.00";
+        ws.Cell(startRow, 1).Style.Font.Bold = true;
+        BorderRange(ws.Range(startRow, 1, startRow, 2));
+
+        startRow += 2;
+    }
+
+    private static void BorderRange(IXLRange range)
+    {
+        range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+        range.Style.Border.InsideBorder = XLBorderStyleValues.Hair;
+    }
+
+    private static void StyleTitleMerge(IXLRange rg)
+    {
+        rg.Merge();
+        rg.Style.Font.Bold = true;
+        rg.Style.Font.FontSize = 16;
+        rg.Style.Fill.BackgroundColor = NavyHeader;
+        rg.Style.Font.FontColor = XLColor.White;
+        rg.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+    }
+
+    private static void StyleHeader(IXLRange range)
+    {
+        range.Style.Font.Bold = true;
+        range.Style.Fill.BackgroundColor = NavyHeader;
+        range.Style.Font.FontColor = XLColor.White;
+        range.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
+        range.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+    }
+
+    private static void FillWeekDetailWorksheet(IXLWorksheet ws, DateTime weekStart, DateTime weekEnd,
+        IReadOnlyList<WorkLog> entries,
+        IReadOnlyDictionary<string, string> userNameToDisplayName,
+        WeekExcelLookups lookups)
+    {
+        var row = 1;
+        ws.Cell(row, 1).Value = $"Haftalık iş kayıtları: {weekStart:dd.MM.yyyy} — {weekEnd:dd.MM.yyyy}";
+        StyleTitleMerge(ws.Range(row, 1, row, 12));
+        row += 2;
+
+        ws.Cell(row, 1).Value = "Tarih";
+        ws.Cell(row, 2).Value = "Gün";
+        ws.Cell(row, 3).Value = "İş kodu";
+        ws.Cell(row, 4).Value = "İş açıklaması";
+        ws.Cell(row, 5).Value = "Aşama";
+        ws.Cell(row, 6).Value = "Kayıt metni";
+        ws.Cell(row, 7).Value = "Kullanıcı adı";
+        ws.Cell(row, 8).Value = "Ad Soyad";
+        ws.Cell(row, 9).Value = "Saatlik ücret";
+        ws.Cell(row, 10).Value = "Pb";
+        ws.Cell(row, 11).Value = "Tahmini tutar";
+        ws.Cell(row, 12).Value = "Saat";
+        StyleHeader(ws.Range(row, 1, row, 12));
+        ws.SheetView.FreezeRows(row);
+        row++;
+
+        foreach (var log in entries.OrderBy(e => userNameToDisplayName.GetValueOrDefault(e.UserName ?? "", e.UserName ?? ""))
+                     .ThenBy(e => e.Date).ThenBy(e => e.CreatedAt))
+        {
+            string code = "", jdesc = "", stageLbl = "";
+
+            ws.Cell(row, 1).Value = log.Date;
+            ws.Cell(row, 1).Style.DateFormat.Format = "dd.MM.yyyy";
+            ws.Cell(row, 2).Value = log.Date.ToString("dddd", new CultureInfo("tr-TR"));
+            ws.Cell(row, 6).Value = log.Description ?? "";
+            ws.Cell(row, 7).Value = log.UserName ?? "";
+
+            ws.Cell(row, 8).Value =
+                string.IsNullOrWhiteSpace(log.UserName)
+                    ? ""
+                    : userNameToDisplayName.GetValueOrDefault(log.UserName.Trim(), log.UserName);
+
+            double? rate = null;
+            var pb = "";
+            decimal? amt = null;
+            string moneyFmt = "#,##0.00 \"₺\"";
+
+            if (log.JobId is { } jid && jid != Guid.Empty)
+            {
+                (code, jdesc) = lookups.ResolveJob(jid);
+                stageLbl = lookups.ResolveStage(jid, log.JobStageId);
+                var rr = lookups.ParticipantHourly(log.UserName, jid, out var isUsd);
+                if (rr.HasValue)
+                {
+                    rate = (double)rr.Value;
+                    pb = isUsd ? "USD" : "TRY";
+                    moneyFmt = isUsd ? "$#,##0.00" : "#,##0.00 \"₺\"";
+                    amt = log.Hours * rr.Value;
+                }
+                else
+                    stageLbl = string.IsNullOrEmpty(stageLbl) ? "" : stageLbl;
+
+                ws.Cell(row, 3).Value = string.IsNullOrEmpty(code)
+                    ? (log.JobId.HasValue ? log.JobId.Value.ToString("N")[..8] + "…" : "")
+                    : code;
+                ws.Cell(row, 4).Value = jdesc;
+                ws.Cell(row, 5).Value =
+                    string.IsNullOrEmpty(stageLbl) &&
+                    log.JobStageId is { } st && st != Guid.Empty
+                        ? "?"
+                        : stageLbl;
+
+                if (rate.HasValue)
+                {
+                    ws.Cell(row, 9).Value = rate.Value;
+                    ws.Cell(row, 9).Style.NumberFormat.Format = moneyFmt;
+                }
+                else
+                    ws.Cell(row, 9).Value = "—";
+
+                ws.Cell(row, 10).Value = pb;
+                if (amt.HasValue)
+                {
+                    ws.Cell(row, 11).Value = (double)amt.Value;
+                    ws.Cell(row, 11).Style.NumberFormat.Format = moneyFmt;
+                }
+                else
+                    ws.Cell(row, 11).Value = "—";
+            }
+            else
+            {
+                ws.Cell(row, 3).Value = "(eski kayıt / iş seçilmemiş)";
+                ws.Cell(row, 4).Value = "";
+                ws.Cell(row, 5).Value = "";
+                ws.Cell(row, 9).Value = "—";
+                ws.Cell(row, 10).Value = "";
+                ws.Cell(row, 11).Value = "—";
+            }
+
+            ws.Cell(row, 12).Value = (double)log.Hours;
+            ws.Cell(row, 12).Style.NumberFormat.Format = "0.0";
+
+            if (row % 2 == 0)
+                ws.Range(row, 1, row, 12).Style.Fill.BackgroundColor = StripSub;
+            ws.Range(row, 1, row, 12).Style.Border.OutsideBorder = XLBorderStyleValues.Dotted;
+            row++;
+        }
+    }
+
+    private static void FillWeekPivotWorksheet(IXLWorksheet ws,
+        IReadOnlyList<WorkLog> entries,
+        IReadOnlyDictionary<string, string> userNameToDisplay,
+        WeekExcelLookups lookups)
+    {
+        var row = 1;
+        ws.Cell(row, 1).Value = "İş × aşama × çalışan — saat pivotu";
+        StyleTitleMerge(ws.Range(row, 1, row, 6));
+        row += 2;
+
+        ws.Cell(row, 1).Value = "İş kodu";
+        ws.Cell(row, 2).Value = "İş açıklaması";
+        ws.Cell(row, 3).Value = "Aşama";
+        ws.Cell(row, 4).Value = "Kullanıcı";
+        ws.Cell(row, 5).Value = "Çalışan";
+        ws.Cell(row, 6).Value = "Saat";
+        StyleHeader(ws.Range(row, 1, row, 6));
+        ws.SheetView.FreezeRows(row);
+        row++;
+
+        var grouped = entries
+            .Where(e => e.JobId.HasValue)
+            .GroupBy(e => (
+                Job: e.JobId!.Value,
+                Stage: e.JobStageId,
+                User: (e.UserName ?? "").Trim()))
+            .OrderByDescending(g =>
+                lookups.ResolveJob(g.Key.Job).Code ?? "")
+            .ThenBy(g => g.Key.User, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var g in grouped)
+        {
+            var (c, desc) = lookups.ResolveJob(g.Key.Job);
+            ws.Cell(row, 1).Value = c;
+            ws.Cell(row, 2).Value = desc;
+            ws.Cell(row, 3).Value = lookups.ResolveStage(g.Key.Job, g.Key.Stage);
+            ws.Cell(row, 4).Value = g.Key.User;
+            ws.Cell(row, 5).Value = userNameToDisplay.GetValueOrDefault(g.Key.User, g.Key.User);
+            ws.Cell(row, 6).Value = (double)g.Sum(e => e.Hours);
+            ws.Cell(row, 6).Style.NumberFormat.Format = "0.0";
+            row++;
+        }
+
+        BorderRange(ws.Range(3, 1, Math.Max(3, row - 1), 6));
+    }
+
+    private static void FillWeekEmployeeTotalsWorksheet(IXLWorksheet ws,
+        IReadOnlyList<WorkLog> entries,
+        IReadOnlyDictionary<string, string> display,
+        WeekExcelLookups lookups)
+    {
+        var row = 1;
+        ws.Cell(row, 1).Value = "Çalışan bazında haftalık özet";
+        StyleTitleMerge(ws.Range(row, 1, row, 4));
+        row += 2;
+
+        ws.Cell(row, 1).Value = "Çalışan";
+        ws.Cell(row, 2).Value = "Toplam saat";
+        ws.Cell(row, 3).Value = "Tahmini tutar Σ*";
+        ws.Cell(row, 4).Value = "Kayıt adedi";
+        StyleHeader(ws.Range(row, 1, row, 4));
+        ws.SheetView.FreezeRows(row);
+        row++;
+
+        ws.Cell(row, 1).Value =
+            "* TRY/USD aynı hücrede toplanmış olabilir; kesin rakam için iş bazlı maliyet sayfasını kullanın.";
+        ws.Range(row, 1, row, 4).Merge().Style.Font.Italic = true;
+        ws.Range(row, 1, row, 4).Style.Font.FontColor = XLColor.FromHtml("#5A6978");
+        row++;
+
+        foreach (var g in entries.Where(e => !string.IsNullOrWhiteSpace(e.UserName))
+                     .GroupBy(e => e.UserName!, StringComparer.OrdinalIgnoreCase))
+        {
+            var name = display.GetValueOrDefault(g.Key.Trim(), g.Key.Trim());
+            var hrs = g.Sum(x => x.Hours);
+            ws.Cell(row, 1).Value = name;
+            ws.Cell(row, 2).Value = (double)hrs;
+            ws.Cell(row, 2).Style.NumberFormat.Format = "0.0";
+
+            decimal costSum = 0;
+            foreach (var e in g)
+            {
+                if (!e.JobId.HasValue) continue;
+                var rr = lookups.ParticipantHourly(e.UserName, e.JobId.Value, out _);
+                if (rr.HasValue)
+                    costSum += e.Hours * rr.Value;
+            }
+
+            if (Math.Abs(costSum) < 0.0001m)
+                ws.Cell(row, 3).Value = "—";
+            else
+            {
+                ws.Cell(row, 3).Value = (double)costSum;
+                ws.Cell(row, 3).Style.NumberFormat.Format = "#,##0.00";
+            }
+            ws.Cell(row, 4).Value = g.Count();
+            row++;
+        }
+    }
+
     private static void AppendJobDefinitionWorksheet(XLWorkbook wb, JobDetail detail, string jobCode, string jobDescription)
     {
         var ws = wb.Worksheets.Add("İş planı");
@@ -337,7 +680,8 @@ public class ReportExcelService : IReportExcelService
             {
                 ws.Cell(r, 1).Value = p.UserName;
                 ws.Cell(r, 2).Value = (double)p.HourlyRate;
-                ws.Cell(r, 3).Value = string.IsNullOrWhiteSpace(p.HourlyRateCurrency) ? "TRY" : p.HourlyRateCurrency.ToUpperInvariant();
+                ws.Cell(r, 3).Value =
+                    string.IsNullOrWhiteSpace(p.HourlyRateCurrency) ? "TRY" : p.HourlyRateCurrency.ToUpperInvariant();
                 ws.Cell(r, 2).Style.NumberFormat.Format =
                     string.Equals(p.HourlyRateCurrency?.Trim(), "USD", StringComparison.OrdinalIgnoreCase)
                         ? "$#,##0.00"
@@ -356,10 +700,10 @@ public class ReportExcelService : IReportExcelService
         ws.Row(r).Style.Font.Bold = true;
         r++;
 
-        string StageNameAt(int stageIndex)
+        static string StageNameAt(IReadOnlyList<JobStageItem> orderedStagesArg, int stageIndex)
         {
-            if (stageIndex >= 0 && stageIndex < orderedStages.Count)
-                return orderedStages[stageIndex].Name;
+            if (stageIndex >= 0 && stageIndex < orderedStagesArg.Count)
+                return orderedStagesArg[stageIndex].Name;
             return stageIndex >= 0 ? $"Aşama #{stageIndex + 1}" : "?";
         }
 
@@ -373,7 +717,7 @@ public class ReportExcelService : IReportExcelService
         {
             foreach (var pl in plans)
             {
-                ws.Cell(r, 1).Value = StageNameAt(pl.StageIndex);
+                ws.Cell(r, 1).Value = StageNameAt(orderedStages, pl.StageIndex);
                 ws.Cell(r, 2).Value = pl.UserName;
                 ws.Cell(r, 3).Value = (double)pl.PlannedHours;
                 ws.Cell(r, 3).Style.NumberFormat.Format = "0.0";

@@ -20,7 +20,7 @@ public class WorkLogsController : ControllerBase
     }
 
     private string? CurrentUserName => User.FindFirstValue(ClaimTypes.Name);
-    private bool IsAdmin => User.IsInRole("Admin");
+    private bool IsAdminOrYonetici => User.IsInRole("Admin") || User.IsInRole("Yonetici");
 
     /// <summary>Sunucu saati (UTC) ile cari haftanın Pazartesi ve Pazar günlerini döner; tarih manipülasyonu engellenir.</summary>
     private static (DateTime WeekStart, DateTime WeekEnd) GetCurrentWeekUtc()
@@ -46,7 +46,7 @@ public class WorkLogsController : ControllerBase
         if (string.IsNullOrEmpty(current)) return Unauthorized();
 
         IQueryable<WorkLogEntity> query = _db.WorkLogs.AsNoTracking();
-        if (!IsAdmin || string.IsNullOrEmpty(userName))
+        if (!IsAdminOrYonetici || string.IsNullOrEmpty(userName))
             query = query.Where(w => w.UserName == current);
         else
             query = query.Where(w => w.UserName == userName);
@@ -59,6 +59,7 @@ public class WorkLogsController : ControllerBase
                 Id = w.Id,
                 Date = w.Date,
                 JobId = w.JobId,
+                JobStageId = w.JobStageId,
                 Description = w.Description,
                 Hours = w.Hours,
                 UserName = w.UserName,
@@ -69,7 +70,7 @@ public class WorkLogsController : ControllerBase
     }
 
     [HttpGet("all")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult<List<WorkLogDto>>> GetAll()
     {
         var list = await _db.WorkLogs
@@ -81,6 +82,7 @@ public class WorkLogsController : ControllerBase
                 Id = w.Id,
                 Date = w.Date,
                 JobId = w.JobId,
+                JobStageId = w.JobStageId,
                 Description = w.Description,
                 Hours = w.Hours,
                 UserName = w.UserName,
@@ -105,18 +107,36 @@ public class WorkLogsController : ControllerBase
             var dateUtc = new DateTime(logDate.Year, logDate.Month, logDate.Day, 0, 0, 0, DateTimeKind.Utc);
 
             // Personel sadece bu hafta (sunucu saati) için kayıt ekleyebilir; bilgisayar tarihi değiştirilse bile geçersiz.
-            if (!IsAdmin && !IsDateInCurrentWeek(dateUtc))
+            if (!IsAdminOrYonetici && !IsDateInCurrentWeek(dateUtc))
                 return BadRequest("Sadece bu haftanın iş kayıtları eklenebilir. Geçmiş veya gelecek hafta için kayıt eklenemez.");
 
             string displayDescription = dto.Description ?? "";
+            Guid? resolvedStageId = null;
             if (dto.JobId.HasValue && dto.JobId.Value != Guid.Empty)
             {
                 var job = await _db.Jobs.FindAsync(dto.JobId.Value);
                 if (job == null || !job.IsActive)
                     return BadRequest("Seçilen iş bulunamadı veya artık aktif değil.");
-                displayDescription = job.Code + " - " + job.Description;
+
+                var stageCount = await _db.JobStages.CountAsync(s => s.JobId == job.Id);
+                if (stageCount > 0)
+                {
+                    if (!dto.JobStageId.HasValue || dto.JobStageId.Value == Guid.Empty)
+                        return BadRequest("Bu iş için aşama seçimi zorunludur.");
+                    var stage = await _db.JobStages.FirstOrDefaultAsync(s => s.Id == dto.JobStageId.Value && s.JobId == job.Id);
+                    if (stage == null)
+                        return BadRequest("Seçilen aşama bu işe ait değil.");
+                    resolvedStageId = stage.Id;
+                    displayDescription = $"{job.Code} - {job.Description} · {stage.Name}";
+                }
+                else
+                {
+                    if (dto.JobStageId.HasValue && dto.JobStageId.Value != Guid.Empty)
+                        return BadRequest("Bu işte aşama tanımlı değil.");
+                    displayDescription = $"{job.Code} - {job.Description}";
+                }
             }
-            else if (!IsAdmin)
+            else if (!IsAdminOrYonetici)
                 return BadRequest("Lütfen listeden bir iş seçin.");
 
             var entity = new WorkLogEntity
@@ -124,9 +144,10 @@ public class WorkLogsController : ControllerBase
                 Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
                 Date = dateUtc,
                 JobId = dto.JobId,
+                JobStageId = resolvedStageId,
                 Description = displayDescription,
                 Hours = dto.Hours,
-                UserName = IsAdmin && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,
+                UserName = IsAdminOrYonetici && !string.IsNullOrEmpty(dto.UserName) ? dto.UserName : current,
                 CreatedAt = DateTime.UtcNow
             };
             _db.WorkLogs.Add(entity);
@@ -136,6 +157,7 @@ public class WorkLogsController : ControllerBase
                 Id = entity.Id,
                 Date = entity.Date,
                 JobId = entity.JobId,
+                JobStageId = entity.JobStageId,
                 Description = entity.Description,
                 Hours = entity.Hours,
                 UserName = entity.UserName,
@@ -154,10 +176,10 @@ public class WorkLogsController : ControllerBase
     {
         var entity = await _db.WorkLogs.FindAsync(id);
         if (entity == null) return NotFound();
-        if (!IsAdmin && entity.UserName != CurrentUserName) return Forbid();
+        if (!IsAdminOrYonetici && entity.UserName != CurrentUserName) return Forbid();
 
         // Personel sadece bu haftanın kayıtlarını düzenleyebilir (sunucu saati).
-        if (!IsAdmin && !IsDateInCurrentWeek(entity.Date))
+        if (!IsAdminOrYonetici && !IsDateInCurrentWeek(entity.Date))
             return BadRequest("Sadece bu haftanın iş kayıtları düzenlenebilir.");
 
         // Takvim günü aynen korunur (timezone kayması önlenir).
@@ -170,11 +192,29 @@ public class WorkLogsController : ControllerBase
             if (job != null && job.IsActive)
             {
                 entity.JobId = dto.JobId;
-                entity.Description = job.Code + " - " + job.Description;
+                var stageCount = await _db.JobStages.CountAsync(s => s.JobId == job.Id);
+                if (stageCount > 0)
+                {
+                    if (!dto.JobStageId.HasValue || dto.JobStageId.Value == Guid.Empty)
+                        return BadRequest("Bu iş için aşama seçimi zorunludur.");
+                    var stage = await _db.JobStages.FirstOrDefaultAsync(s => s.Id == dto.JobStageId.Value && s.JobId == job.Id);
+                    if (stage == null)
+                        return BadRequest("Seçilen aşama bu işe ait değil.");
+                    entity.JobStageId = stage.Id;
+                    entity.Description = $"{job.Code} - {job.Description} · {stage.Name}";
+                }
+                else
+                {
+                    entity.JobStageId = null;
+                    entity.Description = $"{job.Code} - {job.Description}";
+                }
             }
         }
         else
+        {
+            entity.JobStageId = null;
             entity.Description = dto.Description ?? "";
+        }
         await _db.SaveChangesAsync();
         return NoContent();
     }
@@ -184,10 +224,10 @@ public class WorkLogsController : ControllerBase
     {
         var entity = await _db.WorkLogs.FindAsync(id);
         if (entity == null) return NotFound();
-        if (!IsAdmin && entity.UserName != CurrentUserName) return Forbid();
+        if (!IsAdminOrYonetici && entity.UserName != CurrentUserName) return Forbid();
 
         // Personel sadece bu haftanın kayıtlarını silebilir (sunucu saati).
-        if (!IsAdmin && !IsDateInCurrentWeek(entity.Date))
+        if (!IsAdminOrYonetici && !IsDateInCurrentWeek(entity.Date))
             return BadRequest("Sadece bu haftanın iş kayıtları silinebilir.");
 
         _db.WorkLogs.Remove(entity);
@@ -205,7 +245,7 @@ public class WorkLogsController : ControllerBase
         if (string.IsNullOrEmpty(current)) return Unauthorized();
 
         IQueryable<WorkLogEntity> query = _db.WorkLogs.Where(w => w.Date >= from && w.Date <= to);
-        if (!IsAdmin || string.IsNullOrEmpty(userName))
+        if (!IsAdminOrYonetici || string.IsNullOrEmpty(userName))
             query = query.Where(w => w.UserName == current);
         else
             query = query.Where(w => w.UserName == userName);
@@ -215,7 +255,7 @@ public class WorkLogsController : ControllerBase
     }
 
     [HttpGet("totals-all")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult<object>> GetTotalsAll([FromQuery] DateTime from, [FromQuery] DateTime to)
     {
         var total = await _db.WorkLogs

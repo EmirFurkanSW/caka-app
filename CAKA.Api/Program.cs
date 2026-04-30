@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using CAKA.Api.Data;
 using CAKA.Api.Services;
@@ -57,14 +58,18 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuer = false,
             ValidateAudience = false,
             ValidateLifetime = true,
-            ClockSkew = TimeSpan.FromMinutes(5)
+            ClockSkew = TimeSpan.FromMinutes(5),
+            // JWT içindeki "role" claim'i ile User.IsInRole / RequireRole tutarlı çalışsın
+            NameClaimType = ClaimTypes.Name,
+            RoleClaimType = "role"
         };
     });
 
 builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Admin", p => p.RequireRole("Admin"));
-    options.AddPolicy("AdminOrPersonel", p => p.RequireRole("Admin", "Personel"));
+    options.AddPolicy("AdminOrYonetici", p => p.RequireRole("Admin", "Yonetici"));
+    options.AddPolicy("AdminOrPersonel", p => p.RequireRole("Admin", "Personel", "Yonetici"));
 });
 
 builder.Services.AddControllers();
@@ -85,6 +90,9 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     db.Database.EnsureCreated();
     DbSchemaUpdater.EnsureJobsTableExists(db);
+    DbSchemaUpdater.EnsureJobPlanningTables(db);
+    DbSchemaUpdater.EnsureJobParticipantCurrencyColumn(db);
+    DbSchemaUpdater.EnsureWorkLogJobStageIdColumn(db);
     DbSchemaUpdater.EnsureUserHourlyRateColumn(db);
     await SeedData.EnsureAdminAsync(db);
 }

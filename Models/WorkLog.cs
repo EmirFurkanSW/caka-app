@@ -9,6 +9,8 @@ public class WorkLog
     public DateTime Date { get; set; }
     /// <summary>Seçilen iş (admin tanımlı). Null ise eski serbest metin kayıt.</summary>
     public Guid? JobId { get; set; }
+    /// <summary>İşte aşama tanımlıysa hangi aşamada çalışıldığı.</summary>
+    public Guid? JobStageId { get; set; }
     /// <summary>Gösterim metni: iş kodu - açıklama veya eski açıklama.</summary>
     public string Description { get; set; } = string.Empty;
     public decimal Hours { get; set; }

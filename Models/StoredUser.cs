@@ -12,4 +12,10 @@ public class StoredUser
     /// <summary>Saatlik ücret (TRY).</summary>
     public decimal HourlyRate { get; set; }
     public bool IsSuspended { get; set; }
+
+    /// <summary>Personel | Yonetici (API ile uyumlu).</summary>
+    public string Role { get; set; } = "Personel";
+
+    /// <summary>Arayüzde gösterim (Personel / Yönetici).</summary>
+    public string RoleLabel => Role == "Yonetici" ? "Yönetici" : "Personel";
 }

@@ -11,6 +11,7 @@ public class PersonelAddWorkViewModel : ViewModelBase
 {
     private DateTime? _selectedDate = DateTime.Today;
     private string _statusMessage = string.Empty;
+    private readonly Dictionary<Guid, JobDetail?> _jobDetailCache = new();
 
     public PersonelAddWorkViewModel(IAuthService authService, IWorkLogService workLogService, BackendApiClient api)
     {
@@ -30,7 +31,7 @@ public class PersonelAddWorkViewModel : ViewModelBase
         });
         SaveCommand = new RelayCommand(_ => SaveAll());
         LoadJobs();
-        AddRow(); // Başlangıçta bir satır
+        AddRow();
     }
 
     private readonly BackendApiClient _api;
@@ -41,10 +42,9 @@ public class PersonelAddWorkViewModel : ViewModelBase
     private static (DateTime WeekStart, DateTime WeekEnd) GetCurrentWeekRange()
     {
         var today = DateTime.Today;
-        // .NET: Pazar=0, Pazartesi=1, ..., Cumartesi=6
         var daysToMonday = today.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)today.DayOfWeek - 1;
         var weekStart = today.AddDays(-daysToMonday);
-        var weekEnd = weekStart.AddDays(6); // Pazar
+        var weekEnd = weekStart.AddDays(6);
         return (weekStart, weekEnd);
     }
 
@@ -60,13 +60,8 @@ public class PersonelAddWorkViewModel : ViewModelBase
         set => SetProperty(ref _selectedDate, value);
     }
 
-    /// <summary>Bu haftanın pazartesi günü (tarih).</summary>
     public DateTime WeekStart { get; }
-
-    /// <summary>Bu haftanın pazar günü (tarih).</summary>
     public DateTime WeekEnd { get; }
-
-    /// <summary>Örn. "10.02.2026 - 16.02.2026"</summary>
     public string WeekRangeText => $"{WeekStart:dd.MM.yyyy} - {WeekEnd:dd.MM.yyyy}";
 
     public ObservableCollection<WorkEntryRow> Entries { get; }
@@ -81,6 +76,23 @@ public class PersonelAddWorkViewModel : ViewModelBase
     public ICommand RemoveRowCommand { get; }
     public ICommand SaveCommand { get; }
 
+    private JobDetail? GetJobDetailCached(Guid jobId)
+    {
+        if (_jobDetailCache.TryGetValue(jobId, out var cached))
+            return cached;
+        try
+        {
+            var d = _api.GetJobDetail(jobId);
+            _jobDetailCache[jobId] = d;
+            return d;
+        }
+        catch
+        {
+            _jobDetailCache[jobId] = null;
+            return null;
+        }
+    }
+
     private void LoadJobs()
     {
         Jobs.Clear();
@@ -91,12 +103,13 @@ public class PersonelAddWorkViewModel : ViewModelBase
     /// <summary>Sayfa her açıldığında iş listesini yenile (admin yeni iş eklemiş olabilir).</summary>
     public void Refresh()
     {
+        _jobDetailCache.Clear();
         LoadJobs();
     }
 
     private void AddRow()
     {
-        Entries.Add(new WorkEntryRow { Hours = null });
+        Entries.Add(new WorkEntryRow(GetJobDetailCached));
     }
 
     private void SaveAll()
@@ -120,21 +133,34 @@ public class PersonelAddWorkViewModel : ViewModelBase
             return;
         }
 
+        foreach (var row in validRows)
+        {
+            var detail = GetJobDetailCached(row.SelectedJob!.Id);
+            var needsStage = detail?.Stages is { Count: > 0 };
+            if (needsStage == true && (row.SelectedStageId == null || row.SelectedStageId == Guid.Empty))
+            {
+                StatusMessage = "Aşaması tanımlı işlerde önce işi, sonra ilgili aşamayı seçin.";
+                return;
+            }
+        }
+
         try
         {
             foreach (var row in validRows)
             {
+                var detail = GetJobDetailCached(row.SelectedJob!.Id);
+                var hasStages = detail?.Stages is { Count: > 0 };
                 _workLogService.Add(new WorkLog
                 {
                     Date = date,
                     JobId = row.SelectedJob!.Id,
+                    JobStageId = hasStages == true ? row.SelectedStageId : null,
                     Description = row.SelectedJob.DisplayText,
                     Hours = row.Hours!.Value,
                     UserName = _authService.CurrentUser?.UserName
                 });
             }
 
-            // Doldurulmuş satırları temizle (kaydedilenleri kaldır)
             foreach (var row in validRows)
                 Entries.Remove(row);
 

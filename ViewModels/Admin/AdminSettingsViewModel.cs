@@ -1,5 +1,6 @@
 using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
+using CAKA.PerformanceApp.Models;
 using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Admin;
@@ -11,13 +12,20 @@ public class AdminSettingsViewModel : ViewModelBase
     private string _confirmPassword = string.Empty;
     private string _statusMessage = string.Empty;
 
-    public AdminSettingsViewModel(IAdminPasswordStore adminPasswordStore)
+    public AdminSettingsViewModel(IAuthService authService, IAdminPasswordStore adminPasswordStore)
     {
+        _authService = authService;
         _adminPasswordStore = adminPasswordStore;
         ChangePasswordCommand = new RelayCommand(_ => ChangePassword());
     }
 
+    private readonly IAuthService _authService;
     private readonly IAdminPasswordStore _adminPasswordStore;
+
+    public string PasswordHelpText =>
+        _authService.CurrentUser?.Role == UserRole.Admin
+            ? "Ana yönetici (admin) hesabının şifresini buradan güncelleyebilirsiniz."
+            : "Kendi hesap şifrenizi güncelleyin.";
 
     public string CurrentPassword
     {
@@ -67,7 +75,10 @@ public class AdminSettingsViewModel : ViewModelBase
             return;
         }
 
-        var (success, errorMessage) = _adminPasswordStore.SetPassword(CurrentPassword, NewPassword);
+        var isAdmin = _authService.CurrentUser?.Role == UserRole.Admin;
+        var (success, errorMessage) = isAdmin
+            ? _adminPasswordStore.SetPassword(CurrentPassword, NewPassword)
+            : _authService.ChangeMyPassword(CurrentPassword, NewPassword);
         if (!success)
         {
             StatusMessage = errorMessage ?? "Şifre güncellenemedi.";
@@ -77,6 +88,6 @@ public class AdminSettingsViewModel : ViewModelBase
         CurrentPassword = "";
         NewPassword = "";
         ConfirmPassword = "";
-        StatusMessage = "Admin şifresi güncellendi.";
+        StatusMessage = isAdmin ? "Ana yönetici şifresi güncellendi." : "Şifreniz güncellendi.";
     }
 }

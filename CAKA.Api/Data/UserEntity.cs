@@ -9,5 +9,5 @@ public class UserEntity
     /// <summary>Saatlik ücret (TRY). Admin tarafından yönetilir.</summary>
     public decimal HourlyRate { get; set; }
     public bool IsSuspended { get; set; }
-    public string Role { get; set; } = "Personel"; // Admin | Personel
+    public string Role { get; set; } = "Personel"; // Admin | Personel | Yonetici
 }

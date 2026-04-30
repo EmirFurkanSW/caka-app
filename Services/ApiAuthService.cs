@@ -31,7 +31,12 @@ public class ApiAuthService : IAuthService
             UserName = response.UserName ?? userName,
             DisplayName = string.IsNullOrWhiteSpace(response.DisplayName) ? response.UserName ?? userName : response.DisplayName,
             Department = response.Department ?? "",
-            Role = response.Role == "Admin" ? UserRole.Admin : UserRole.Personel
+            Role = response.Role switch
+            {
+                "Admin" => UserRole.Admin,
+                "Yonetici" => UserRole.Yonetici,
+                _ => UserRole.Personel
+            }
         };
         return true;
     }

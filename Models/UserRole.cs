@@ -6,5 +6,7 @@ namespace CAKA.PerformanceApp.Models;
 public enum UserRole
 {
     Admin,
+    /// <summary>Patron paneli: kullanıcı oluşturamaz; diğer yönetim işlevleri açık.</summary>
+    Yonetici,
     Personel
 }

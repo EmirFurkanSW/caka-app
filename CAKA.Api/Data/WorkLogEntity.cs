@@ -7,6 +7,9 @@ public class WorkLogEntity
     /// <summary>Hangi iş (admin tanımlı). Null ise eski serbest metin kayıt.</summary>
     public Guid? JobId { get; set; }
     public JobEntity? Job { get; set; }
+    /// <summary>Hangi aşama (iş tanımından). İşte aşama yoksa null.</summary>
+    public Guid? JobStageId { get; set; }
+    public JobStageEntity? JobStage { get; set; }
     /// <summary>Gösterim için: Job varsa Job.Code + Job.Description, yoksa eski serbest metin.</summary>
     public string Description { get; set; } = string.Empty;
     public decimal Hours { get; set; }

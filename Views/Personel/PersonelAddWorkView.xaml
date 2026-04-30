@@ -7,7 +7,7 @@
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <Border Style="{StaticResource CardStyle}" MaxWidth="560">
             <StackPanel>
-                <TextBlock Text="İş Ekle" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,20"/>
+                <TextBlock Text="İş Kaydı Gir" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,20"/>
 
                 <TextBlock Text="Tarih (tüm satırlar için geçerli)" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
                 <TextBlock Text="{Binding WeekRangeText, StringFormat='Sadece bu hafta: {0}'}" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,6" Foreground="{StaticResource TextSecondaryBrush}"/>
@@ -16,7 +16,9 @@
                             Margin="0,0,0,20" Padding="10,8" FontSize="14"/>
 
                 <Grid Margin="0,0,0,12">
-                    <TextBlock Text="İş seçin ve kaç saat çalıştığınızı girin (birden fazla satır ekleyebilirsiniz)" Style="{StaticResource SubtitleTextStyle}" VerticalAlignment="Center"/>
+                    <TextBlock TextWrapping="Wrap" Style="{StaticResource SubtitleTextStyle}" VerticalAlignment="Center">
+                        İşi seçin; işte aşama tanımlıysa aşamayı seçin ve bu kayıt için saati girin. Birden fazla satır ekleyebilirsiniz.
+                    </TextBlock>
                     <Button Content="+ Satır ekle" Command="{Binding AddRowCommand}" HorizontalAlignment="Right"
                             Padding="14,8" Background="{StaticResource AccentBrush}" Foreground="White"/>
                 </Grid>
@@ -46,13 +48,26 @@
                         </Style>
                     </DataGrid.CellStyle>
                     <DataGrid.Columns>
-                        <DataGridTemplateColumn Header="İş" Width="*" MinWidth="260">
+                        <DataGridTemplateColumn Header="İş" Width="*" MinWidth="220">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <ComboBox ItemsSource="{Binding DataContext.Jobs, RelativeSource={RelativeSource AncestorType=UserControl}}"
                                               SelectedItem="{Binding SelectedJob, UpdateSourceTrigger=PropertyChanged}"
                                               DisplayMemberPath="DisplayText"
                                               Padding="6,4" Margin="0"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Aşama" Width="160" MinWidth="120">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox ItemsSource="{Binding StageOptions}"
+                                              SelectedValue="{Binding SelectedStageId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="StageId"
+                                              DisplayMemberPath="Label"
+                                              IsEnabled="{Binding HasStageChoices}"
+                                              Padding="6,4" Margin="0"
+                                              ToolTip="İşte aşama yoksa gri kalır; admin aşama tanımladıysa zorunludur."/>
                                 </DataTemplate>
                             </DataGridTemplateColumn.CellTemplate>
                         </DataGridTemplateColumn>

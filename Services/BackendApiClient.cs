@@ -122,6 +122,21 @@ public class BackendApiClient
         }) ?? new List<Job>();
     }
 
+    /// <summary>Tek işin aşama / çalışan / plan detayı.</summary>
+    public JobDetail? GetJobDetail(Guid id)
+    {
+        return CallAsync(async () =>
+        {
+            SetBearer();
+            var res = await _http.GetAsync($"api/jobs/{id}").ConfigureAwait(false);
+            if (res.StatusCode == System.Net.HttpStatusCode.NotFound)
+                return null;
+            res.EnsureSuccessStatusCode();
+            var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+            return JsonSerializer.Deserialize<JobDetail>(json, JsonOptions);
+        });
+    }
+
     public (bool Success, string? Error) AddJob(Job job)
     {
         try
@@ -137,6 +152,31 @@ public class BackendApiClient
                     throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "İş eklenemedi.");
                 var created = JsonSerializer.Deserialize<Job>(json, JsonOptions);
                 if (created != null) { job.Id = created.Id; job.IsActive = created.IsActive; }
+            });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
+    /// <summary>Aşamalar, çalışan ücretleri ve plan saatleri ile iş oluşturur.</summary>
+    public (bool Success, string? Error) AddJobDetail(JobDetail detail)
+    {
+        try
+        {
+            CallAsync(async () =>
+            {
+                SetBearer();
+                var body = new StringContent(JsonSerializer.Serialize(detail, JsonOptions), Encoding.UTF8, "application/json");
+                var res = await _http.PostAsync("api/jobs", body).ConfigureAwait(false);
+                var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                if (!res.IsSuccessStatusCode)
+                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "İş eklenemedi.");
+                var created = JsonSerializer.Deserialize<JobDetail>(json, JsonOptions);
+                if (created != null)
+                    detail.Id = created.Id;
             });
             return (true, null);
         }
@@ -170,6 +210,30 @@ public class BackendApiClient
         }
     }
 
+    /// <summary>Aşamalar ve planları da günceller (tam gövde).</summary>
+    public (bool Success, string? Error) UpdateJobDetail(JobDetail detail)
+    {
+        try
+        {
+            CallAsync(async () =>
+            {
+                SetBearer();
+                var body = new StringContent(JsonSerializer.Serialize(detail, JsonOptions), Encoding.UTF8, "application/json");
+                var res = await _http.PutAsync($"api/jobs/{detail.Id}", body).ConfigureAwait(false);
+                if (!res.IsSuccessStatusCode)
+                {
+                    var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    throw new InvalidOperationException(TryGetErrorMessage(json) ?? json ?? "Güncellenemedi.");
+                }
+            });
+            return (true, null);
+        }
+        catch (Exception ex)
+        {
+            return (false, ex.Message);
+        }
+    }
+
     public bool DeleteJob(Guid id)
     {
         return CallAsync(async () =>
@@ -189,7 +253,8 @@ public class BackendApiClient
             DisplayName = SecurityConstants.Truncate(user.DisplayName, SecurityConstants.MaxDisplayNameLength),
             Department = SecurityConstants.Truncate(user.Department, SecurityConstants.MaxDepartmentLength),
             user.HourlyRate,
-            user.IsSuspended
+            user.IsSuspended,
+            Role = string.IsNullOrWhiteSpace(user.Role) ? "Personel" : user.Role.Trim()
         };
         var resp = CallAsync(async () =>
         {
@@ -223,7 +288,7 @@ public class BackendApiClient
         });
     }
 
-    public (bool Success, string? Error) UpdateUser(string userName, string displayName, string department, decimal hourlyRate, string? newPassword)
+    public (bool Success, string? Error) UpdateUser(string userName, string displayName, string department, decimal hourlyRate, string? newPassword, string? role = null)
     {
         var dto = new
         {
@@ -232,15 +297,26 @@ public class BackendApiClient
             DisplayName = SecurityConstants.Truncate(displayName, SecurityConstants.MaxDisplayNameLength),
             Department = SecurityConstants.Truncate(department, SecurityConstants.MaxDepartmentLength),
             HourlyRate = hourlyRate < 0 ? 0 : hourlyRate,
-            IsSuspended = false
+            IsSuspended = false,
+            Role = role
         };
         var resp = CallAsync(async () =>
         {
             SetBearer();
-            var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var body = new StringContent(JsonSerializer.Serialize(dto, JsonOptions), Encoding.UTF8, "application/json");
             var res = await _http.PutAsync($"api/users/{Uri.EscapeDataString(userName)}", body).ConfigureAwait(false);
             var json = await res.Content.ReadAsStringAsync().ConfigureAwait(false);
-            return JsonSerializer.Deserialize<LoginResponseDto>(json, JsonOptions);
+            if (!res.IsSuccessStatusCode)
+            {
+                var err = TryGetErrorMessage(json)
+                          ?? (json.Length > 200 ? json[..200] + "…" : json)
+                          ?? res.ReasonPhrase
+                          ?? $"HTTP {(int)res.StatusCode}";
+                return new LoginResponseDto { Success = false, Error = err };
+            }
+
+            return JsonSerializer.Deserialize<LoginResponseDto>(json, JsonOptions)
+                   ?? new LoginResponseDto { Success = true };
         });
         return (resp?.Success ?? false, resp?.Error);
     }
@@ -283,6 +359,7 @@ public class BackendApiClient
                 workLog.Id,
                 Date = workLog.Date.ToString("yyyy-MM-dd"),
                 JobId = workLog.JobId,
+                JobStageId = workLog.JobStageId,
                 Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
                 workLog.Hours,
                 UserName = SecurityConstants.Truncate(workLog.UserName, SecurityConstants.MaxUserNameLength)
@@ -314,6 +391,7 @@ public class BackendApiClient
             {
                 Date = workLog.Date.ToString("yyyy-MM-dd"),
                 JobId = workLog.JobId,
+                JobStageId = workLog.JobStageId,
                 Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
                 workLog.Hours
             };

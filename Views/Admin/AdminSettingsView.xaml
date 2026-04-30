@@ -8,7 +8,7 @@
         <Border Style="{StaticResource CardStyle}" MaxWidth="440">
             <StackPanel>
                 <TextBlock Text="Şifre değiştir" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,20"/>
-                <TextBlock Text="Admin (yönetici) hesabının şifresini buradan güncelleyebilirsiniz." Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,20" TextWrapping="Wrap"/>
+                <TextBlock Text="{Binding PasswordHelpText}" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,20" TextWrapping="Wrap"/>
                 <StackPanel Margin="0,0,0,12">
                     <TextBlock Text="Mevcut şifre" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
                     <PasswordBox x:Name="CurrentPasswordBox" Padding="10,8" PasswordChanged="CurrentPasswordBox_PasswordChanged"/>

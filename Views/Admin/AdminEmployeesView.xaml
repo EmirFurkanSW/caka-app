@@ -6,8 +6,12 @@
              mc:Ignorable="d" d:DesignHeight="450" d:DesignWidth="700">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
+            <TextBlock Text="Yeni kullanıcı oluşturmak için ana yönetici (admin) ile giriş yapın. Bu rol ile kullanıcı eklenemez; mevcut kayıtları güncelleyebilir, askıya alabilir veya silebilirsiniz."
+                       TextWrapping="Wrap" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,16"
+                       Visibility="{Binding ShowBrowseOnlyNotice, Converter={StaticResource BooleanToVisibilityConverter}}"/>
             <!-- Yeni kullanıcı / Düzenleme kartı -->
-            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20"
+                    Visibility="{Binding ShowEmployeeFormCard, Converter={StaticResource BooleanToVisibilityConverter}}">
                 <StackPanel>
                     <TextBlock Text="Kullanıcı düzenleniyor" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"
                                Visibility="{Binding IsEditMode, Converter={StaticResource BooleanToVisibilityConverter}}"/>
@@ -60,6 +64,18 @@
                         <TextBox Text="{Binding NewHourlyRate, UpdateSourceTrigger=PropertyChanged}" Padding="10,8" Width="220" HorizontalAlignment="Left"
                                  ToolTip="Örn: 250 veya 250,5"/>
                     </StackPanel>
+                    <StackPanel Margin="0,12,0,0"
+                                Visibility="{Binding ShowNewUserRoleCombo, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="Rol" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding RoleChoices}" SelectedItem="{Binding NewUserRole, Mode=TwoWay}"
+                                  Padding="10,8" Width="220" HorizontalAlignment="Left"/>
+                    </StackPanel>
+                    <StackPanel Margin="0,12,0,0"
+                                Visibility="{Binding ShowEditRoleCombo, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Text="Rol" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                        <ComboBox ItemsSource="{Binding RoleChoices}" SelectedItem="{Binding EditingRole, Mode=TwoWay}"
+                                  Padding="10,8" Width="220" HorizontalAlignment="Left"/>
+                    </StackPanel>
                     <TextBlock Text="{Binding StatusMessage}" Foreground="{StaticResource AccentBrush}" Margin="0,12,0,0"
                                Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
                 </StackPanel>
@@ -89,6 +105,7 @@
                               BorderBrush="{StaticResource BorderBrush}" BorderThickness="1">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Kullanıcı adı" Binding="{Binding UserName}" Width="*" MinWidth="100"/>
+                            <DataGridTextColumn Header="Rol" Binding="{Binding RoleLabel}" Width="100" MinWidth="90"/>
                             <DataGridTextColumn Header="Ad Soyad" Binding="{Binding DisplayName}" Width="*" MinWidth="120"/>
                             <DataGridTextColumn Header="Departman" Binding="{Binding Department}" Width="*" MinWidth="100"/>
                             <DataGridTextColumn Header="Saatlik ücret" Binding="{Binding HourlyRate, StringFormat='{}{0:N2}'}" Width="110"/>

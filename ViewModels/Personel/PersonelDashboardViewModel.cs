@@ -29,7 +29,7 @@ public class PersonelDashboardViewModel : ViewModelBase
 
     public ObservableCollection<WorkLog> RecentWorkLogs { get; }
 
-    /// <summary>Haftalık toplam ve son işleri yeniler (Geçmiş/İş Ekle sonrası Dashboard'a dönünce güncel veri görünsün).</summary>
+    /// <summary>Haftalık toplam ve son işleri yeniler (Geçmiş/İş Kaydı Gir sonrası Dashboard'a dönünce güncel veri görünsün).</summary>
     public void Refresh()
     {
         var userName = _authService.CurrentUser?.UserName;

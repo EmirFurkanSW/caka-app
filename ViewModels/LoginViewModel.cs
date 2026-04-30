@@ -130,7 +130,7 @@ public class LoginViewModel : ViewModelBase
             var currentUser = _authService.CurrentUser!;
             Window? targetWindow = null;
 
-            if (currentUser.Role == UserRole.Admin)
+            if (currentUser.Role == UserRole.Admin || currentUser.Role == UserRole.Yonetici)
             {
                 var adminShell = _serviceProvider.GetService(typeof(Views.Admin.AdminShellWindow)) as Window;
                 targetWindow = adminShell;

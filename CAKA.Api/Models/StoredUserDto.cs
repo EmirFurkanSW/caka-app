@@ -8,4 +8,7 @@ public class StoredUserDto
     public string Department { get; set; } = string.Empty;
     public decimal HourlyRate { get; set; }
     public bool IsSuspended { get; set; }
+
+    /// <summary>Yeni kullanıcı veya (sadece ana admin) güncellemede: Personel | Yonetici. PUT'ta null ise rol değişmez.</summary>
+    public string? Role { get; set; }
 }

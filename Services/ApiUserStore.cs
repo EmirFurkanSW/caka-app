@@ -41,15 +41,15 @@ public class ApiUserStore : IUserStore
         if (string.IsNullOrWhiteSpace(userName)) return;
         var existing = _api.GetUsers().FirstOrDefault(u => string.Equals(u.UserName, userName.Trim(), StringComparison.OrdinalIgnoreCase));
         var rate = existing?.HourlyRate ?? 0m;
-        var (success, _) = _api.UpdateUser(userName.Trim(), existing?.DisplayName ?? "", existing?.Department ?? "", rate, newPassword);
+        var (success, _) = _api.UpdateUser(userName.Trim(), existing?.DisplayName ?? "", existing?.Department ?? "", rate, newPassword, null);
         if (!success)
             throw new InvalidOperationException("Şifre güncellenemedi.");
     }
 
-    public void UpdateUserInfo(string userName, string displayName, string department, decimal hourlyRate, string? newPassword = null)
+    public void UpdateUserInfo(string userName, string displayName, string department, decimal hourlyRate, string? newPassword = null, string? role = null)
     {
         if (string.IsNullOrWhiteSpace(userName)) return;
-        var (success, error) = _api.UpdateUser(userName.Trim(), displayName, department, hourlyRate, newPassword);
+        var (success, error) = _api.UpdateUser(userName.Trim(), displayName, department, hourlyRate, newPassword, role);
         if (!success)
             throw new InvalidOperationException(error ?? "Bilgiler güncellenemedi.");
     }

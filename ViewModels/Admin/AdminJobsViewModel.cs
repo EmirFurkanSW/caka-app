@@ -1,4 +1,6 @@
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -9,7 +11,7 @@ using CAKA.PerformanceApp.Services;
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
 /// <summary>
-/// Admin: Tanımlı işler (iş kodu + açıklama). Çalışanlar bu işlerden seçip saat girer.
+/// Admin: İş tanımı (kod, açıklama), aşamalar, işe özel saatlik ücretler ve aşama bazlı planlanan saatler.
 /// </summary>
 public class AdminJobsViewModel : ViewModelBase
 {
@@ -22,38 +24,82 @@ public class AdminJobsViewModel : ViewModelBase
     {
         _api = api;
         Jobs = new ObservableCollection<Job>();
+        EditStages = new ObservableCollection<JobStageEditRow>();
+        EditParticipants = new ObservableCollection<JobParticipantEditRow>();
+        EditPlans = new ObservableCollection<JobPlanEditRow>();
+        StagePickList = new ObservableCollection<StagePickItem>();
+        UserOptions = new ObservableCollection<StoredUser>();
+
+        CurrencyOptions.Add(new CurrencyOption { Code = "TRY", Label = "TL (TRY)" });
+        CurrencyOptions.Add(new CurrencyOption { Code = "USD", Label = "USD ($)" });
+
+        EditStages.CollectionChanged += OnEditStagesCollectionChanged;
+
         RefreshCommand = new RelayCommand(_ => Refresh());
         AddJobCommand = new RelayCommand(_ => AddJob(), _ => !string.IsNullOrWhiteSpace(NewCode));
         DeleteJobCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedJob != null);
         UpdateJobCommand = new RelayCommand(_ => UpdateSelected(), _ => SelectedJob != null && !string.IsNullOrWhiteSpace(NewCode));
         CloseOrReopenJobCommand = new RelayCommand(_ => CloseOrReopenSelected(), _ => SelectedJob != null);
-        try { Refresh(); } catch { /* API eski olabilir; sayfa yine açılsın */ }
+
+        AddStageCommand = new RelayCommand(_ => AddStageRow());
+        RemoveStageCommand = new RelayCommand(p => RemoveStageRow(p as JobStageEditRow));
+        AddParticipantCommand = new RelayCommand(_ => EditParticipants.Add(new JobParticipantEditRow()));
+        RemoveParticipantCommand = new RelayCommand(p => RemoveParticipantRow(p as JobParticipantEditRow));
+        AddPlanCommand = new RelayCommand(_ => AddPlanRow());
+        RemovePlanCommand = new RelayCommand(p => RemovePlanRow(p as JobPlanEditRow));
+
+        LoadUserOptions();
+        try { Refresh(); } catch { /* API eski olabilir */ }
     }
 
     private readonly BackendApiClient _api;
 
     public ObservableCollection<Job> Jobs { get; }
+    public ObservableCollection<JobStageEditRow> EditStages { get; }
+    public ObservableCollection<JobParticipantEditRow> EditParticipants { get; }
+    public ObservableCollection<JobPlanEditRow> EditPlans { get; }
+    public ObservableCollection<StagePickItem> StagePickList { get; }
+    public ObservableCollection<StoredUser> UserOptions { get; }
+    public ObservableCollection<CurrencyOption> CurrencyOptions { get; } = new();
+
     public Job? SelectedJob
     {
         get => _selectedJob;
         set
         {
             if (!SetProperty(ref _selectedJob, value)) return;
-            if (value == null) return;
-            NewCode = value.Code;
-            NewDescription = value.Description;
+            if (value == null)
+            {
+                ClearEditors();
+                return;
+            }
+
+            var detail = _api.GetJobDetail(value.Id);
+            if (detail == null)
+            {
+                StatusMessage = "İş detayı yüklenemedi.";
+                ClearPlanningEditors();
+                NewCode = value.Code;
+                NewDescription = value.Description;
+                return;
+            }
+
+            LoadEditorsFromDetail(detail);
         }
     }
+
     public string NewCode
     {
         get => _newCode;
         set { if (SetProperty(ref _newCode, value ?? "")) ClearStatus(); }
     }
+
     public string NewDescription
     {
         get => _newDescription;
         set { if (SetProperty(ref _newDescription, value ?? "")) ClearStatus(); }
     }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -66,25 +112,238 @@ public class AdminJobsViewModel : ViewModelBase
     public ICommand UpdateJobCommand { get; }
     public ICommand CloseOrReopenJobCommand { get; }
 
+    public ICommand AddStageCommand { get; }
+    public ICommand RemoveStageCommand { get; }
+    public ICommand AddParticipantCommand { get; }
+    public ICommand RemoveParticipantCommand { get; }
+    public ICommand AddPlanCommand { get; }
+    public ICommand RemovePlanCommand { get; }
+
+    private void OnEditStagesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (JobStageEditRow row in e.NewItems)
+                row.PropertyChanged += StageRowOnPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (JobStageEditRow row in e.OldItems)
+                row.PropertyChanged -= StageRowOnPropertyChanged;
+        }
+
+        RebuildStagePickList();
+    }
+
+    private void StageRowOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(JobStageEditRow.StageNumber) || e.PropertyName == nameof(JobStageEditRow.Description))
+            RebuildStagePickList();
+    }
+
     private void ClearStatus()
     {
         StatusMessage = string.Empty;
         (UpdateJobCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        (AddJobCommand as RelayCommand)?.RaiseCanExecuteChanged();
+    }
+
+    private void LoadUserOptions()
+    {
+        UserOptions.Clear();
+        try
+        {
+            foreach (var u in _api.GetUsers().Where(u => !u.IsSuspended).OrderBy(u => u.DisplayName))
+                UserOptions.Add(u);
+        }
+        catch { /* liste boş kalır */ }
+    }
+
+    private void RebuildStagePickList()
+    {
+        StagePickList.Clear();
+        for (var i = 0; i < EditStages.Count; i++)
+        {
+            var s = EditStages[i];
+            StagePickList.Add(new StagePickItem { Index = i, Label = $"{i + 1}. {s.ResolvedName}" });
+        }
+    }
+
+    private void ClearEditors()
+    {
+        NewCode = "";
+        NewDescription = "";
+        ClearPlanningEditors();
+    }
+
+    private void ClearPlanningEditors()
+    {
+        foreach (var r in EditStages)
+            r.PropertyChanged -= StageRowOnPropertyChanged;
+        EditStages.Clear();
+        EditParticipants.Clear();
+        EditPlans.Clear();
+        RebuildStagePickList();
+    }
+
+    private void LoadEditorsFromDetail(JobDetail detail)
+    {
+        NewCode = detail.Code;
+        NewDescription = detail.Description;
+
+        EditStages.Clear();
+        foreach (var s in detail.Stages.OrderBy(x => x.SortOrder))
+            EditStages.Add(new JobStageEditRow { Description = s.Description ?? "" });
+        RenumberStages();
+
+        EditParticipants.Clear();
+        foreach (var p in detail.Participants)
+        {
+            var cur = string.IsNullOrWhiteSpace(p.HourlyRateCurrency) ? "TRY" : p.HourlyRateCurrency.Trim().ToUpperInvariant();
+            if (cur != "TRY" && cur != "USD")
+                cur = "TRY";
+            EditParticipants.Add(new JobParticipantEditRow { UserName = p.UserName, HourlyRate = p.HourlyRate, Currency = cur });
+        }
+
+        EditPlans.Clear();
+        foreach (var pl in detail.StagePlans.OrderBy(x => x.StageIndex).ThenBy(x => x.UserName))
+            EditPlans.Add(new JobPlanEditRow { StageIndex = pl.StageIndex, UserName = pl.UserName, PlannedHours = pl.PlannedHours });
+
+        RenormalizePlanStageIndices();
+
+        RebuildStagePickList();
+        StatusMessage = string.Empty;
+    }
+
+    private JobDetail BuildJobDetailForSave(Guid id, bool isActive)
+    {
+        return new JobDetail
+        {
+            Id = id,
+            Code = NewCode.Trim(),
+            Description = NewDescription.Trim(),
+            IsActive = isActive,
+            Stages = EditStages.Select((s, i) => new JobStageItem
+            {
+                Id = Guid.Empty,
+                Name = s.ResolvedName,
+                Description = s.Description.Trim(),
+                SortOrder = i
+            }).ToList(),
+            Participants = EditParticipants
+                .Where(p => !string.IsNullOrWhiteSpace(p.UserName))
+                .Select(p => new JobParticipantItem
+                {
+                    UserName = p.UserName.Trim(),
+                    HourlyRate = p.HourlyRate,
+                    HourlyRateCurrency = p.Currency is "TRY" or "USD" ? p.Currency : "TRY"
+                })
+                .ToList(),
+            StagePlans = EditPlans
+                .Where(p => !string.IsNullOrWhiteSpace(p.UserName))
+                .Select(p => new JobStagePlanItem
+                {
+                    StageIndex = p.StageIndex,
+                    UserName = p.UserName.Trim(),
+                    PlannedHours = p.PlannedHours
+                }).ToList()
+        };
+    }
+
+    private void AddStageRow()
+    {
+        EditStages.Add(new JobStageEditRow());
+        RenumberStages();
+    }
+
+    private void RemoveStageRow(JobStageEditRow? row)
+    {
+        if (row == null) return;
+        var i = EditStages.IndexOf(row);
+        if (i < 0) return;
+        EditStages.RemoveAt(i);
+        AdjustPlansAfterStageRemove(i);
+        RenumberStages();
+        RenormalizePlanStageIndices();
+    }
+
+    /// <summary>Listede kalan satırlar üstten alta Stage 1…N olur.</summary>
+    private void RenumberStages()
+    {
+        for (var i = 0; i < EditStages.Count; i++)
+            EditStages[i].StageNumber = i + 1;
+    }
+
+    /// <summary>Plan satırındaki aşama indeksi, mevcut aşama sayısını aşıyorsa düzeltilir.</summary>
+    private void RenormalizePlanStageIndices()
+    {
+        var n = EditStages.Count;
+        if (n == 0)
+        {
+            EditPlans.Clear();
+            return;
+        }
+
+        var toRemove = EditPlans.Where(p => p.StageIndex < 0 || p.StageIndex >= n).ToList();
+        foreach (var p in toRemove)
+            EditPlans.Remove(p);
+        foreach (var p in EditPlans)
+            p.StageIndex = Math.Clamp(p.StageIndex, 0, n - 1);
+    }
+
+    private void AdjustPlansAfterStageRemove(int removedIndex)
+    {
+        var toRemove = EditPlans.Where(p => p.StageIndex == removedIndex).ToList();
+        foreach (var p in toRemove)
+            EditPlans.Remove(p);
+        foreach (var p in EditPlans)
+        {
+            if (p.StageIndex > removedIndex)
+                p.StageIndex--;
+        }
+    }
+
+    private void RemoveParticipantRow(JobParticipantEditRow? row)
+    {
+        if (row == null || !EditParticipants.Contains(row)) return;
+        var un = row.UserName?.Trim();
+        EditParticipants.Remove(row);
+        if (string.IsNullOrEmpty(un)) return;
+        foreach (var p in EditPlans.Where(x => string.Equals(x.UserName, un, StringComparison.OrdinalIgnoreCase)).ToList())
+            EditPlans.Remove(p);
+    }
+
+    private void AddPlanRow()
+    {
+        var idx = EditStages.Count > 0 ? 0 : 0;
+        EditPlans.Add(new JobPlanEditRow { StageIndex = idx, PlannedHours = 0 });
+    }
+
+    private void RemovePlanRow(JobPlanEditRow? row)
+    {
+        if (row != null && EditPlans.Contains(row))
+            EditPlans.Remove(row);
     }
 
     public void Refresh()
     {
+        var prevId = SelectedJob?.Id;
         Jobs.Clear();
         try
         {
             foreach (var j in _api.GetJobs(activeOnly: false))
                 Jobs.Add(j);
+            LoadUserOptions();
             StatusMessage = string.Empty;
         }
         catch
         {
             StatusMessage = "İş listesi yüklenemedi. API güncel mi kontrol edin.";
         }
+
+        if (prevId.HasValue)
+            SelectedJob = Jobs.FirstOrDefault(j => j.Id == prevId.Value);
     }
 
     private void AddJob()
@@ -95,13 +354,15 @@ public class AdminJobsViewModel : ViewModelBase
             StatusMessage = "İş kodu girin.";
             return;
         }
-        var job = new Job { Code = code, Description = NewDescription.Trim() };
-        var (success, error) = _api.AddJob(job);
+
+        var detail = BuildJobDetailForSave(Guid.Empty, true);
+        var (success, error) = _api.AddJobDetail(detail);
         if (success)
         {
-            NewCode = "";
-            NewDescription = "";
+            ClearEditors();
             Refresh();
+            if (detail.Id != Guid.Empty)
+                SelectedJob = Jobs.FirstOrDefault(j => j.Id == detail.Id);
             StatusMessage = "İş eklendi.";
         }
         else
@@ -123,19 +384,11 @@ public class AdminJobsViewModel : ViewModelBase
             return;
         }
 
-        var dto = new Job
-        {
-            Id = SelectedJob.Id,
-            Code = code,
-            Description = NewDescription.Trim(),
-            IsActive = SelectedJob.IsActive
-        };
-
-        var (success, error) = _api.UpdateJob(dto);
+        var detail = BuildJobDetailForSave(SelectedJob.Id, SelectedJob.IsActive);
+        var (success, error) = _api.UpdateJobDetail(detail);
         if (success)
         {
             Refresh();
-            SelectedJob = Jobs.FirstOrDefault(x => x.Id == dto.Id);
             StatusMessage = "İş güncellendi.";
         }
         else
@@ -153,6 +406,7 @@ public class AdminJobsViewModel : ViewModelBase
             return;
         if (_api.DeleteJob(SelectedJob.Id))
         {
+            SelectedJob = null;
             Refresh();
             StatusMessage = "İş silindi.";
         }
@@ -160,17 +414,23 @@ public class AdminJobsViewModel : ViewModelBase
             StatusMessage = "Silinemedi.";
     }
 
-    /// <summary>İşi tamamlandı olarak kapat (çalışanlar artık seçemez) veya tekrar açar.</summary>
     private void CloseOrReopenSelected()
     {
         if (SelectedJob == null) return;
         var job = SelectedJob;
-        var kapat = job.IsActive;
-        var (success, error) = _api.UpdateJob(new Job { Id = job.Id, Code = job.Code, Description = job.Description, IsActive = !kapat });
+        var d = _api.GetJobDetail(job.Id);
+        if (d == null)
+        {
+            StatusMessage = "İş bilgisi alınamadı.";
+            return;
+        }
+
+        d.IsActive = !d.IsActive;
+        var (success, error) = _api.UpdateJobDetail(d);
         if (success)
         {
             Refresh();
-            StatusMessage = kapat ? "İş kapatıldı. Çalışanlar bu işi artık seçemez." : "İş tekrar açıldı.";
+            StatusMessage = d.IsActive ? "İş tekrar açıldı." : "İş kapatıldı. Çalışanlar bu işi artık seçemez.";
         }
         else
             StatusMessage = error ?? "Güncellenemedi.";

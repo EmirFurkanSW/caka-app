@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CAKA.Api.Data;
 using CAKA.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -18,8 +19,21 @@ public class UsersController : ControllerBase
         _db = db;
     }
 
+    /// <summary>JWT rol claim biçimi farklı olduğunda da ana admin tespiti.</summary>
+    private static bool IsCallerFullAdmin(ClaimsPrincipal user)
+    {
+        if (user.IsInRole("Admin")) return true;
+        foreach (var c in user.Claims)
+        {
+            var isRoleClaim = c.Type == ClaimTypes.Role || c.Type == "role" || c.Type.EndsWith("/role", StringComparison.Ordinal);
+            if (isRoleClaim && string.Equals(c.Value, "Admin", StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+        return false;
+    }
+
     [HttpGet]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult<List<StoredUserDto>>> GetAll()
     {
         var list = await _db.Users
@@ -32,7 +46,8 @@ public class UsersController : ControllerBase
                 DisplayName = u.DisplayName,
                 Department = u.Department,
                 HourlyRate = u.HourlyRate,
-                IsSuspended = u.IsSuspended
+                IsSuspended = u.IsSuspended,
+                Role = u.Role ?? "Personel"
             })
             .ToListAsync();
         return list;
@@ -51,6 +66,10 @@ public class UsersController : ControllerBase
         if (await _db.Users.AnyAsync(u => u.UserName == userName))
             return Ok(new LoginResponse { Success = false, Error = "Bu kullanıcı adı zaten kayıtlı." });
 
+        var role = string.IsNullOrWhiteSpace(dto.Role) ? "Personel" : dto.Role.Trim();
+        if (role != "Personel" && role != "Yonetici")
+            role = "Personel";
+
         _db.Users.Add(new UserEntity
         {
             UserName = userName,
@@ -59,14 +78,14 @@ public class UsersController : ControllerBase
             Department = (dto.Department ?? "").Trim(),
             HourlyRate = dto.HourlyRate < 0 ? 0 : dto.HourlyRate,
             IsSuspended = dto.IsSuspended,
-            Role = "Personel"
+            Role = role
         });
         await _db.SaveChangesAsync();
         return Ok(new LoginResponse { Success = true });
     }
 
     [HttpDelete("{userName}")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult> Delete(string userName)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName && u.Role != "Admin");
@@ -77,7 +96,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{userName}/suspended")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult> SetSuspended(string userName, [FromBody] bool suspended)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName && u.Role != "Admin");
@@ -88,7 +107,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{userName}")]
-    [Authorize(Policy = "Admin")]
+    [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult<LoginResponse>> UpdateUser(string userName, [FromBody] StoredUserDto dto)
     {
         var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName && u.Role != "Admin");
@@ -99,6 +118,16 @@ public class UsersController : ControllerBase
         user.HourlyRate = dto.HourlyRate < 0 ? 0 : dto.HourlyRate;
         if (!string.IsNullOrWhiteSpace(dto.Password))
             user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password);
+
+        if (IsCallerFullAdmin(User) && dto.Role != null && !string.IsNullOrWhiteSpace(dto.Role))
+        {
+            var r = dto.Role.Trim();
+            if (r.Equals("Personel", StringComparison.OrdinalIgnoreCase))
+                user.Role = "Personel";
+            else if (r.Equals("Yonetici", StringComparison.OrdinalIgnoreCase))
+                user.Role = "Yonetici";
+        }
+
         await _db.SaveChangesAsync();
         return Ok(new LoginResponse { Success = true });
     }

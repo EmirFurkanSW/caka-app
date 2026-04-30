@@ -9,22 +9,36 @@ namespace CAKA.PerformanceApp.ViewModels.Admin;
 
 public class AdminEmployeesViewModel : ViewModelBase
 {
+    /// <summary>Arayüzdeki rol metnini API değerine çevirir (Yönetici / Yonetici karışıklığına dayanıklı).</summary>
+    private static string MapUiRoleToApi(string? uiChoice)
+    {
+        if (string.IsNullOrWhiteSpace(uiChoice)) return "Personel";
+        var t = uiChoice.Trim();
+        if (string.Equals(t, "Yonetici", StringComparison.OrdinalIgnoreCase)) return "Yonetici";
+        if (string.Equals(t, "Yönetici", StringComparison.OrdinalIgnoreCase)) return "Yonetici";
+        return "Personel";
+    }
+
     private string _newUserName = string.Empty;
     private string _newPassword = string.Empty;
     private string _newDisplayName = string.Empty;
     private string _newDepartment = string.Empty;
     private string _newHourlyRate = "0";
+    private string _newUserRole = "Personel";
+    private string _editingRole = "Personel";
     private string _statusMessage = string.Empty;
     private StoredUser? _selectedUser;
     private bool _isEditMode;
     private string _editingUserName = string.Empty;
 
-    public AdminEmployeesViewModel(IUserStore userStore)
+    public AdminEmployeesViewModel(IUserStore userStore, IAuthService authService)
     {
         _userStore = userStore;
+        _authService = authService;
         Users = new ObservableCollection<StoredUser>();
         RefreshCommand = new RelayCommand(_ => Refresh());
-        AddUserCommand = new RelayCommand(_ => AddUser(), _ => !IsEditMode && !string.IsNullOrWhiteSpace(NewUserName) && !string.IsNullOrWhiteSpace(NewPassword));
+        AddUserCommand = new RelayCommand(_ => AddUser(),
+            _ => CanCreateUsers && !IsEditMode && !string.IsNullOrWhiteSpace(NewUserName) && !string.IsNullOrWhiteSpace(NewPassword));
         DeleteUserCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedUser != null);
         ToggleSuspendCommand = new RelayCommand(_ => ToggleSuspendSelected(), _ => SelectedUser != null && !IsEditMode);
         StartEditCommand = new RelayCommand(_ => StartEdit(), _ => SelectedUser != null && !IsEditMode);
@@ -34,6 +48,23 @@ public class AdminEmployeesViewModel : ViewModelBase
     }
 
     private readonly IUserStore _userStore;
+    private readonly IAuthService _authService;
+
+    /// <summary>Yalnız ana admin (Admin) yeni kullanıcı oluşturabilir.</summary>
+    public bool CanCreateUsers => _authService.CurrentUser?.Role == UserRole.Admin;
+
+    /// <summary>Rol atamasını yalnız ana admin değiştirebilir.</summary>
+    public bool CanChangeUserRoles => _authService.CurrentUser?.Role == UserRole.Admin;
+
+    public IReadOnlyList<string> RoleChoices { get; } = new[] { "Personel", "Yönetici" };
+
+    public bool ShowBrowseOnlyNotice => !CanCreateUsers && !IsEditMode;
+
+    public bool ShowEmployeeFormCard => CanCreateUsers || IsEditMode;
+
+    public bool ShowNewUserRoleCombo => CanCreateUsers && !IsEditMode;
+
+    public bool ShowEditRoleCombo => IsEditMode && CanChangeUserRoles;
 
     public ObservableCollection<StoredUser> Users { get; }
 
@@ -73,6 +104,18 @@ public class AdminEmployeesViewModel : ViewModelBase
         set { if (SetProperty(ref _newHourlyRate, value ?? "")) ClearStatus(); }
     }
 
+    public string NewUserRole
+    {
+        get => _newUserRole;
+        set => SetProperty(ref _newUserRole, string.IsNullOrWhiteSpace(value) ? "Personel" : value);
+    }
+
+    public string EditingRole
+    {
+        get => _editingRole;
+        set => SetProperty(ref _editingRole, string.IsNullOrWhiteSpace(value) ? "Personel" : value);
+    }
+
     public string StatusMessage
     {
         get => _statusMessage;
@@ -82,7 +125,17 @@ public class AdminEmployeesViewModel : ViewModelBase
     public bool IsEditMode
     {
         get => _isEditMode;
-        set => SetProperty(ref _isEditMode, value);
+        set
+        {
+            if (SetProperty(ref _isEditMode, value))
+            {
+                OnPropertyChanged(nameof(ShowBrowseOnlyNotice));
+                OnPropertyChanged(nameof(ShowEmployeeFormCard));
+                OnPropertyChanged(nameof(ShowNewUserRoleCombo));
+                OnPropertyChanged(nameof(ShowEditRoleCombo));
+                ((RelayCommand)AddUserCommand).RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public string EditingUserName
@@ -111,6 +164,9 @@ public class AdminEmployeesViewModel : ViewModelBase
 
     private void AddUser()
     {
+        if (!CanCreateUsers)
+            return;
+
         var userName = NewUserName.Trim();
         if (string.IsNullOrEmpty(userName))
         {
@@ -166,7 +222,8 @@ public class AdminEmployeesViewModel : ViewModelBase
             DisplayName = NewDisplayName.Trim(),
             Department = NewDepartment.Trim(),
             HourlyRate = hourlyRate,
-            IsSuspended = false
+            IsSuspended = false,
+            Role = MapUiRoleToApi(NewUserRole)
         });
         Refresh();
         NewUserName = "";
@@ -174,6 +231,7 @@ public class AdminEmployeesViewModel : ViewModelBase
         NewDisplayName = "";
         NewDepartment = "";
         NewHourlyRate = "0";
+        NewUserRole = "Personel";
         StatusMessage = "Kullanıcı eklendi.";
     }
 
@@ -216,6 +274,7 @@ public class AdminEmployeesViewModel : ViewModelBase
         NewDepartment = SelectedUser.Department;
         NewHourlyRate = SelectedUser.HourlyRate.ToString("0.##", System.Globalization.CultureInfo.GetCultureInfo("tr-TR"));
         NewPassword = "";
+        EditingRole = SelectedUser.Role == "Yonetici" ? "Yönetici" : "Personel";
         IsEditMode = true;
         StatusMessage = "";
     }
@@ -243,12 +302,15 @@ public class AdminEmployeesViewModel : ViewModelBase
             StatusMessage = "Saatlik ücret negatif olamaz.";
             return;
         }
+        var roleApi = CanChangeUserRoles ? MapUiRoleToApi(EditingRole) : null;
+
         _userStore.UpdateUserInfo(
             EditingUserName,
             NewDisplayName.Trim(),
             NewDepartment.Trim(),
             hourlyRate,
-            string.IsNullOrWhiteSpace(NewPassword) ? null : NewPassword);
+            string.IsNullOrWhiteSpace(NewPassword) ? null : NewPassword,
+            roleApi);
         ClearEdit();
         Refresh();
         StatusMessage = "Kullanıcı bilgileri güncellendi.";
@@ -269,6 +331,8 @@ public class AdminEmployeesViewModel : ViewModelBase
         NewDisplayName = "";
         NewDepartment = "";
         NewHourlyRate = "0";
+        NewUserRole = "Personel";
+        EditingRole = "Personel";
     }
 
     /// <summary>Sayfa her açıldığında sıfırdan açılsın; seçim ve düzenleme modu temizlenir.</summary>

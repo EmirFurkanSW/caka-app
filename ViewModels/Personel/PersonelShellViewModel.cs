@@ -25,7 +25,7 @@ public class PersonelShellViewModel : ViewModelBase
         MenuItems = new ObservableCollection<PersonelMenuItem>
         {
             new("Dashboard", "ViewDashboard", () => CurrentPage = dashboardVm),
-            new("İş Ekle", "PlusCircle", () => CurrentPage = addWorkVm),
+            new("İş Kaydı Gir", "PlusCircle", () => CurrentPage = addWorkVm),
             new("Geçmiş", "History", () => CurrentPage = historyVm),
             new("Profil", "Account", () => CurrentPage = profileVm)
         };
@@ -63,7 +63,7 @@ public class PersonelShellViewModel : ViewModelBase
                     addWork.Refresh();
                 if (value is PersonelHistoryViewModel history)
                     history.Refresh();
-                PageTitle = value is PersonelDashboardViewModel ? "Dashboard" : value is PersonelAddWorkViewModel ? "İş Ekle" : value is PersonelHistoryViewModel ? "Geçmiş" : "Profil";
+                PageTitle = value is PersonelDashboardViewModel ? "Dashboard" : value is PersonelAddWorkViewModel ? "İş Kaydı Gir" : value is PersonelHistoryViewModel ? "Geçmiş" : "Profil";
             }
         }
     }

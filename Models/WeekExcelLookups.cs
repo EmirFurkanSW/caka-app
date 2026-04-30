@@ -41,6 +41,28 @@ public sealed class WeekExcelLookups
         return label;
     }
 
+    /// <summary>İş bazlı İngilizce Excel için aşama etiketi.</summary>
+    public string ResolveStageEnglish(Guid jobId, Guid? stageId)
+    {
+        if (!stageId.HasValue || stageId.Value == Guid.Empty)
+            return "Unassigned / general";
+        var shortId = stageId.Value.ToString("N")[..8] + "…";
+        if (!JobDetails.TryGetValue(jobId, out var d))
+            return $"Stage ({shortId})";
+        var st = d.Stages.FirstOrDefault(s => s.Id == stageId.Value);
+        if (st == null)
+            return $"Stage ({shortId})";
+        var sorted = d.Stages.OrderBy(x => x.SortOrder).ToList();
+        var ix = sorted.FindIndex(x => x.Id == st.Id);
+        var orderNum = ix >= 0 ? ix + 1 : (st.SortOrder > 0 ? st.SortOrder : 1);
+        var label = string.IsNullOrWhiteSpace(st.Name)
+            ? $"Stage {orderNum}"
+            : $"{orderNum}. {st.Name.Trim()}";
+        if (!string.IsNullOrWhiteSpace(st.Description))
+            label += $" — {st.Description.Trim()}";
+        return label;
+    }
+
     public decimal? ParticipantHourly(string? userName, Guid jobId, out bool isUsd)
     {
         isUsd = false;

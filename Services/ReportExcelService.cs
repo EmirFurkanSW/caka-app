@@ -20,19 +20,19 @@ public class ReportExcelService : IReportExcelService
         lookups ??= new WeekExcelLookups();
 
         using var wb = new XLWorkbook();
-        FillWeekDetailWorksheet(wb.Worksheets.Add("Haftalık detay"),
+        FillWeekDetailWorksheet(wb.Worksheets.Add("Weekly detail"),
             weekStart, weekEnd, entries, userNameToDisplayName, lookups);
-        FillWeekPivotWorksheet(wb.Worksheets.Add("İş-aşama-çalışan"),
+        FillWeekPivotWorksheet(wb.Worksheets.Add("Job–stage–person"),
             entries, userNameToDisplayName, lookups);
-        FillWeekEmployeeTotalsWorksheet(wb.Worksheets.Add("Çalışan özeti"),
+        FillWeekEmployeeTotalsWorksheet(wb.Worksheets.Add("Person summary"),
             entries, userNameToDisplayName, lookups);
-        var matrices = wb.Worksheets.Add("İş bazlı maliyet");
+        var matrices = wb.Worksheets.Add("Job-based cost");
         var rowMat = 1;
         FillJobMatricesForLogs(matrices, ref rowMat, lookups, entries, userNameToDisplayName,
-            $"Haftalık dönem: {weekStart:dd.MM.yyyy} – {weekEnd:dd.MM.yyyy}");
+            $"Weekly period: {weekStart:dd.MM.yyyy} – {weekEnd:dd.MM.yyyy}");
 
         matrices.Columns().AdjustToContents();
-        foreach (IXLWorksheet ws in wb.Worksheets.Where(w => w.Name != "İş bazlı maliyet"))
+        foreach (IXLWorksheet ws in wb.Worksheets.Where(w => w.Name != "Job-based cost"))
             ws.Columns().AdjustToContents();
 
         wb.SaveAs(filePath);
@@ -58,15 +58,15 @@ public class ReportExcelService : IReportExcelService
         var usersPre = ResolveColumnUsernames(columnUserNames, userNameToDisplayName, jobLogs);
         var lastColTitle = Math.Max(8, usersPre.Count + 2);
 
-        var ws = wb.Worksheets.Add("Maliyet ve aşama");
-        ws.Cell(1, 1).Value = "İş maliyeti ve aşama dağılımı";
+        var ws = wb.Worksheets.Add("Cost & stages");
+        ws.Cell(1, 1).Value = "Work cost & stage breakdown";
         StyleTitleMerge(ws.Range(1, 1, 1, lastColTitle));
 
         ws.Cell(2, 1).Value = $"{jobCode} — {jobDescription}";
         ws.Range(2, 1, 2, lastColTitle).Merge().Style.Fill.BackgroundColor = CardBg;
 
         ws.Cell(3, 1).Value =
-            $"Kayıtların tarih aralığı: {periodStart:dd.MM.yyyy} – {periodEnd:dd.MM.yyyy}";
+            $"Records date range: {periodStart:dd.MM.yyyy} – {periodEnd:dd.MM.yyyy}";
         ws.Range(3, 1, 3, lastColTitle).Merge();
 
         var lookups = BuildLookupsFromJobDetail(jobDetail, jobCode, jobDescription);
@@ -77,7 +77,7 @@ public class ReportExcelService : IReportExcelService
 
         var noteRow = r + 1;
         ws.Cell(noteRow, 1).Value =
-            "Not: Kontenjan ve genel gider sırasıyla %5 (×1,05); ‘Discount Amount’ ve ‘Grand Total / First Offer’ satırı düzenlenebilir. Farklı para birimleri aynı toplamdaki sayılarca toplanmıştır.";
+            "Note: Contingency and G&A are applied as 5% each (×1.05); you may edit “Discount Amount” and the Grand Total / First Offer row. Figures in currency columns may combine mixed currencies.";
         ws.Range(noteRow, 1, noteRow, lastColTitle).Merge().Style.Font.Italic = true;
         ws.Range(noteRow, 1, noteRow, lastColTitle).Style.Font.FontColor = XLColor.FromHtml("#5A6978");
 
@@ -89,7 +89,7 @@ public class ReportExcelService : IReportExcelService
         wb.SaveAs(filePath);
     }
 
-    /// <summary>İş bazlı profesyonel layout: çalışanlar sütununda, Stage tablosu, Grand Total / İndirim / First Offer.</summary>
+    /// <summary>Job-facing layout with people as columns, stage summary, Grand Total / discount / first offer.</summary>
     private static void FillJobLandscapePerformanceSheet(IXLWorksheet ws, ref int startRow,
         WeekExcelLookups lookups, Guid jobId, List<WorkLog> jobLogs,
         IReadOnlyDictionary<string, string> display,
@@ -101,7 +101,7 @@ public class ReportExcelService : IReportExcelService
 
         if (userCols.Count == 0)
         {
-            ws.Cell(startRow, 1).Value = "Sütunda gösterilecek kullanıcı yok (Çalışanlar listesi boş).";
+            ws.Cell(startRow, 1).Value = "No users to display in columns (participants list is empty).";
             startRow += 3;
             return;
         }
@@ -118,14 +118,14 @@ public class ReportExcelService : IReportExcelService
         for (var i = 0; i < userCols.Count; i++)
             ws.Cell(startRow, i + 2).Value = display.GetValueOrDefault(userCols[i], userCols[i]);
 
-        ws.Cell(startRow, lastCol).Value = "Toplam";
+        ws.Cell(startRow, lastCol).Value = "Total";
         StyleHeader(ws.Range(startRow, 1, startRow, lastCol));
         var headerExcelRow = startRow;
         startRow++;
 
         var matrixTopRow = startRow;
 
-        ws.Cell(startRow, 1).Value = "Saatlik ücret (iş tanımı)";
+        ws.Cell(startRow, 1).Value = "Hourly rate (job definition)";
         for (var i = 0; i < userCols.Count; i++)
         {
             if (jobId == Guid.Empty)
@@ -150,21 +150,7 @@ public class ReportExcelService : IReportExcelService
         ws.Cell(startRow, lastCol).Clear();
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Mandayı sayısı (saat÷8)";
-        for (var i = 0; i < userCols.Count; i++)
-        {
-            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
-            ws.Cell(startRow, i + 2).Value = (double)(h / 8m);
-            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
-            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        }
-
-        ws.Cell(startRow, lastCol).FormulaA1 =
-            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
-        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
-        startRow++;
-
-        ws.Cell(startRow, 1).Value = "Toplam saat";
+        ws.Cell(startRow, 1).Value = "Total hours";
         for (var i = 0; i < userCols.Count; i++)
         {
             var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
@@ -176,9 +162,24 @@ public class ReportExcelService : IReportExcelService
         ws.Cell(startRow, lastCol).FormulaA1 =
             $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
         ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
+        var totalHoursExcelRow = startRow;
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Toplam maliyet";
+        ws.Cell(startRow, 1).Value = "Man-days (hours÷8)";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            ws.Cell(startRow, i + 2).FormulaA1 =
+                $"{ColLetter(i + 2)}{totalHoursExcelRow}/8";
+            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
+            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"{ColLetter(lastCol)}{totalHoursExcelRow}/8";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Total cost";
         for (var i = 0; i < userCols.Count; i++)
         {
             var hrs = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
@@ -213,7 +214,7 @@ public class ReportExcelService : IReportExcelService
 
         foreach (var sid in stageList)
         {
-            var lbl = sid == Guid.Empty ? "General / none" : lookups.ResolveStage(jobId, sid);
+            var lbl = sid == Guid.Empty ? "Unassigned / general" : lookups.ResolveStageEnglish(jobId, sid);
             ws.Cell(startRow, 1).Value = lbl;
             ws.Row(startRow).Style.Font.Bold = false;
             for (var i = 0; i < userCols.Count; i++)
@@ -258,7 +259,7 @@ public class ReportExcelService : IReportExcelService
 
         if (stageList.Count == 0)
         {
-            ws.Cell(startRow, 1).Value = "— Tanımlı aşama yok —";
+            ws.Cell(startRow, 1).Value = "— No stages defined —";
             ws.Cell(startRow, 2).Value = 0d;
             ws.Cell(startRow, 3).Value = 0d;
             ws.Cell(startRow, 4).Value = 0d;
@@ -269,7 +270,7 @@ public class ReportExcelService : IReportExcelService
         {
             foreach (var sid in stageList)
             {
-                var lbl = sid == Guid.Empty ? "General / none" : lookups.ResolveStage(jobId, sid);
+                var lbl = sid == Guid.Empty ? "Unassigned / general" : lookups.ResolveStageEnglish(jobId, sid);
                 decimal raw = 0;
                 decimal hrs = 0;
                 foreach (var u in userCols)
@@ -350,7 +351,7 @@ public class ReportExcelService : IReportExcelService
             .ToList();
     }
 
-    /// <summary>İş tanımındaki tüm aşamalar + kayıtlarda geçen ek aşamalar + (varsa) genel satırı.</summary>
+    /// <summary>All stages from job definition plus any extra stages in logs (+ optional general row).</summary>
     private static List<Guid> OrderedStagesForJobPerformance(JobDetail? detail, List<WorkLog> jobLogs)
     {
         var ordered = new List<Guid>();
@@ -456,7 +457,7 @@ public class ReportExcelService : IReportExcelService
         if (distinctJobs.Count == 0)
         {
             ws.Cell(startRow, 1).Value =
-                "Bu dönemde JobId içeren iş kaydı yok. Eski kayıtlar için 'Haftalık detay' sayfasına bakın.";
+                "No work logs linked to a job (JobId) in this period. See the Weekly detail sheet for legacy entries.";
             startRow += 3;
             return;
         }
@@ -500,7 +501,7 @@ public class ReportExcelService : IReportExcelService
 
         if (userCols.Count == 0)
         {
-            ws.Cell(startRow, 1).Value += " — kullanıcı adlı kayıt yok.";
+            ws.Cell(startRow, 1).Value += " — no work logs under a username.";
             startRow += 2;
             return;
         }
@@ -517,13 +518,13 @@ public class ReportExcelService : IReportExcelService
         for (var i = 0; i < userCols.Count; i++)
             ws.Cell(startRow, i + 2).Value = userNameToDisplay.GetValueOrDefault(userCols[i], userCols[i]);
 
-        ws.Cell(startRow, lastCol).Value = "Toplam";
+        ws.Cell(startRow, lastCol).Value = "Total";
         StyleHeader(ws.Range(startRow, 1, startRow, lastCol));
         startRow++;
 
         var matrixTopRow = startRow;
 
-        ws.Cell(startRow, 1).Value = "Saatlik ücret (iş tanımı)";
+        ws.Cell(startRow, 1).Value = "Hourly rate (job definition)";
         for (var i = 0; i < userCols.Count; i++)
         {
             var rate = lookups.ParticipantHourly(userCols[i], jobId, out var usd);
@@ -534,38 +535,43 @@ public class ReportExcelService : IReportExcelService
                 cell.Style.NumberFormat.Format = usd ? "$#,##0.00" : "#,##0.00 \"₺\"";
             }
             else
-                cell.Value = "(tanımlı değil)";
+                cell.Value = "(not defined)";
+
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Mandayı sayısı (saat÷8)";
-        for (var i = 0; i < userCols.Count; i++)
-        {
-            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
-            ws.Cell(startRow, i + 2).Value = (double)(h / 8m);
-            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
-        }
-
-        ws.Cell(startRow, lastCol).FormulaA1 =
-            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
-        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
-        startRow++;
-
-        ws.Cell(startRow, 1).Value = "Toplam saat";
+        ws.Cell(startRow, 1).Value = "Total hours";
         for (var i = 0; i < userCols.Count; i++)
         {
             var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
             ws.Cell(startRow, i + 2).Value = (double)h;
             ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
+            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
         ws.Cell(startRow, lastCol).FormulaA1 =
             $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
         ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
+        var blockTotalHoursExcelRow = startRow;
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Toplam maliyet";
+        ws.Cell(startRow, 1).Value = "Man-days (hours÷8)";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            ws.Cell(startRow, i + 2).FormulaA1 =
+                $"{ColLetter(i + 2)}{blockTotalHoursExcelRow}/8";
+            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
+            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"{ColLetter(lastCol)}{blockTotalHoursExcelRow}/8";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Total cost";
         for (var i = 0; i < userCols.Count; i++)
         {
             var hrs = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
@@ -590,8 +596,8 @@ public class ReportExcelService : IReportExcelService
         foreach (var sid in stages)
         {
             var lbl = sid == Guid.Empty
-                ? "Aşamasız / genel"
-                : lookups.ResolveStage(jobId, sid);
+                ? "Unassigned / general"
+                : lookups.ResolveStageEnglish(jobId, sid);
 
             ws.Cell(startRow, 1).Value = lbl;
             for (var i = 0; i < userCols.Count; i++)
@@ -612,15 +618,15 @@ public class ReportExcelService : IReportExcelService
         BorderRange(ws.Range(matrixTopRow - 1, 1, startRow - 1, lastCol));
 
         var summaryHdr = startRow + 1;
-        ws.Cell(startRow, 1).Value = "Aşama bazında özet (maliyet + marj)";
+        ws.Cell(startRow, 1).Value = "Stage summary (cost + margin)";
         ws.Cell(startRow, 1).Style.Font.Bold = true;
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Aşama";
-        ws.Cell(startRow, 2).Value = "Ham maliyet (Σ)";
-        ws.Cell(startRow, 3).Value = "Toplam saat";
-        ws.Cell(startRow, 4).Value = "Kontenjan sonrası (×1,05)";
-        ws.Cell(startRow, 5).Value = "G&A sonrası (×1,05)";
+        ws.Cell(startRow, 1).Value = "Stage";
+        ws.Cell(startRow, 2).Value = "Raw cost (Σ)";
+        ws.Cell(startRow, 3).Value = "Total hours";
+        ws.Cell(startRow, 4).Value = "After contingency (×1.05)";
+        ws.Cell(startRow, 5).Value = "After G&A (×1.05)";
         StyleHeader(ws.Range(startRow, 1, startRow, 5));
         var summaryFirstRow = startRow + 1;
         startRow++;
@@ -628,8 +634,8 @@ public class ReportExcelService : IReportExcelService
         foreach (var sid in stages)
         {
             var lbl = sid == Guid.Empty
-                ? "Aşamasız / genel"
-                : lookups.ResolveStage(jobId, sid);
+                ? "Unassigned / general"
+                : lookups.ResolveStageEnglish(jobId, sid);
 
             decimal raw = 0;
             decimal hrs = 0;
@@ -661,7 +667,7 @@ public class ReportExcelService : IReportExcelService
         }
 
         var summaryLastRow = startRow - 1;
-        ws.Cell(startRow, 1).Value = "Genel toplam";
+        ws.Cell(startRow, 1).Value = "Grand total";
         ws.Cell(startRow, 2).FormulaA1 = $"SUM(B{summaryFirstRow}:B{summaryLastRow})";
         ws.Cell(startRow, 3).FormulaA1 = $"SUM(C{summaryFirstRow}:C{summaryLastRow})";
         ws.Cell(startRow, 4).FormulaA1 = $"SUM(D{summaryFirstRow}:D{summaryLastRow})";
@@ -672,14 +678,14 @@ public class ReportExcelService : IReportExcelService
         BorderRange(ws.Range(summaryHdr - 1, 1, startRow, 5));
 
         startRow += 2;
-        ws.Cell(startRow, 1).Value = "İndirim tutarı:";
+        ws.Cell(startRow, 1).Value = "Discount amount:";
         ws.Cell(startRow, 2).Value = 0;
         ws.Cell(startRow, 2).Style.NumberFormat.Format = "#,##0.00";
         var discountRowNum = startRow;
         BorderRange(ws.Range(startRow, 1, startRow, 2));
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Net (G&A − indirim):";
+        ws.Cell(startRow, 1).Value = "First offer (G&A − discount):";
         ws.Cell(startRow, 2).FormulaA1 =
             $"{ColLetter(5)}{grandGaRowNum}-{ColLetter(2)}{discountRowNum}";
         ws.Cell(startRow, 2).Style.NumberFormat.Format = "#,##0.00";
@@ -720,22 +726,22 @@ public class ReportExcelService : IReportExcelService
         WeekExcelLookups lookups)
     {
         var row = 1;
-        ws.Cell(row, 1).Value = $"Haftalık iş kayıtları: {weekStart:dd.MM.yyyy} — {weekEnd:dd.MM.yyyy}";
+        ws.Cell(row, 1).Value = $"Weekly work logs: {weekStart:dd.MM.yyyy} — {weekEnd:dd.MM.yyyy}";
         StyleTitleMerge(ws.Range(row, 1, row, 12));
         row += 2;
 
-        ws.Cell(row, 1).Value = "Tarih";
-        ws.Cell(row, 2).Value = "Gün";
-        ws.Cell(row, 3).Value = "İş kodu";
-        ws.Cell(row, 4).Value = "İş açıklaması";
-        ws.Cell(row, 5).Value = "Aşama";
-        ws.Cell(row, 6).Value = "Kayıt metni";
-        ws.Cell(row, 7).Value = "Kullanıcı adı";
-        ws.Cell(row, 8).Value = "Ad Soyad";
-        ws.Cell(row, 9).Value = "Saatlik ücret";
-        ws.Cell(row, 10).Value = "Pb";
-        ws.Cell(row, 11).Value = "Tahmini tutar";
-        ws.Cell(row, 12).Value = "Saat";
+        ws.Cell(row, 1).Value = "Date";
+        ws.Cell(row, 2).Value = "Day";
+        ws.Cell(row, 3).Value = "Job code";
+        ws.Cell(row, 4).Value = "Job description";
+        ws.Cell(row, 5).Value = "Stage";
+        ws.Cell(row, 6).Value = "Log text";
+        ws.Cell(row, 7).Value = "Username";
+        ws.Cell(row, 8).Value = "Full name";
+        ws.Cell(row, 9).Value = "Hourly rate";
+        ws.Cell(row, 10).Value = "CCY";
+        ws.Cell(row, 11).Value = "Est. amount";
+        ws.Cell(row, 12).Value = "Hours";
         StyleHeader(ws.Range(row, 1, row, 12));
         ws.SheetView.FreezeRows(row);
         row++;
@@ -747,7 +753,7 @@ public class ReportExcelService : IReportExcelService
 
             ws.Cell(row, 1).Value = log.Date;
             ws.Cell(row, 1).Style.DateFormat.Format = "dd.MM.yyyy";
-            ws.Cell(row, 2).Value = log.Date.ToString("dddd", new CultureInfo("tr-TR"));
+            ws.Cell(row, 2).Value = log.Date.ToString("dddd", new CultureInfo("en-US"));
             ws.Cell(row, 6).Value = log.Description ?? "";
             ws.Cell(row, 7).Value = log.UserName ?? "";
 
@@ -764,7 +770,7 @@ public class ReportExcelService : IReportExcelService
             if (log.JobId is { } jid && jid != Guid.Empty)
             {
                 (code, jdesc) = lookups.ResolveJob(jid);
-                stageLbl = lookups.ResolveStage(jid, log.JobStageId);
+                stageLbl = lookups.ResolveStageEnglish(jid, log.JobStageId);
                 var rr = lookups.ParticipantHourly(log.UserName, jid, out var isUsd);
                 if (rr.HasValue)
                 {
@@ -805,7 +811,7 @@ public class ReportExcelService : IReportExcelService
             }
             else
             {
-                ws.Cell(row, 3).Value = "(eski kayıt / iş seçilmemiş)";
+                ws.Cell(row, 3).Value = "(legacy / no job selected)";
                 ws.Cell(row, 4).Value = "";
                 ws.Cell(row, 5).Value = "";
                 ws.Cell(row, 9).Value = "—";
@@ -829,16 +835,16 @@ public class ReportExcelService : IReportExcelService
         WeekExcelLookups lookups)
     {
         var row = 1;
-        ws.Cell(row, 1).Value = "İş × aşama × çalışan — saat pivotu";
+        ws.Cell(row, 1).Value = "Job × stage × person — hours pivot";
         StyleTitleMerge(ws.Range(row, 1, row, 6));
         row += 2;
 
-        ws.Cell(row, 1).Value = "İş kodu";
-        ws.Cell(row, 2).Value = "İş açıklaması";
-        ws.Cell(row, 3).Value = "Aşama";
-        ws.Cell(row, 4).Value = "Kullanıcı";
-        ws.Cell(row, 5).Value = "Çalışan";
-        ws.Cell(row, 6).Value = "Saat";
+        ws.Cell(row, 1).Value = "Job code";
+        ws.Cell(row, 2).Value = "Job description";
+        ws.Cell(row, 3).Value = "Stage";
+        ws.Cell(row, 4).Value = "Username";
+        ws.Cell(row, 5).Value = "Person";
+        ws.Cell(row, 6).Value = "Hours";
         StyleHeader(ws.Range(row, 1, row, 6));
         ws.SheetView.FreezeRows(row);
         row++;
@@ -858,7 +864,7 @@ public class ReportExcelService : IReportExcelService
             var (c, desc) = lookups.ResolveJob(g.Key.Job);
             ws.Cell(row, 1).Value = c;
             ws.Cell(row, 2).Value = desc;
-            ws.Cell(row, 3).Value = lookups.ResolveStage(g.Key.Job, g.Key.Stage);
+            ws.Cell(row, 3).Value = lookups.ResolveStageEnglish(g.Key.Job, g.Key.Stage);
             ws.Cell(row, 4).Value = g.Key.User;
             ws.Cell(row, 5).Value = userNameToDisplay.GetValueOrDefault(g.Key.User, g.Key.User);
             ws.Cell(row, 6).Value = (double)g.Sum(e => e.Hours);
@@ -875,20 +881,20 @@ public class ReportExcelService : IReportExcelService
         WeekExcelLookups lookups)
     {
         var row = 1;
-        ws.Cell(row, 1).Value = "Çalışan bazında haftalık özet";
+        ws.Cell(row, 1).Value = "Weekly person summary";
         StyleTitleMerge(ws.Range(row, 1, row, 4));
         row += 2;
 
-        ws.Cell(row, 1).Value = "Çalışan";
-        ws.Cell(row, 2).Value = "Toplam saat";
-        ws.Cell(row, 3).Value = "Tahmini tutar Σ*";
-        ws.Cell(row, 4).Value = "Kayıt adedi";
+        ws.Cell(row, 1).Value = "Person";
+        ws.Cell(row, 2).Value = "Total hours";
+        ws.Cell(row, 3).Value = "Est. amount Σ*";
+        ws.Cell(row, 4).Value = "Log count";
         StyleHeader(ws.Range(row, 1, row, 4));
         ws.SheetView.FreezeRows(row);
         row++;
 
         ws.Cell(row, 1).Value =
-            "* TRY/USD aynı hücrede toplanmış olabilir; kesin rakam için iş bazlı maliyet sayfasını kullanın.";
+            "* TRY and USD amounts may be mixed in one cell; use the Job-based cost sheet for currency-specific totals.";
         ws.Range(row, 1, row, 4).Merge().Style.Font.Italic = true;
         ws.Range(row, 1, row, 4).Style.Font.FontColor = XLColor.FromHtml("#5A6978");
         row++;
@@ -925,9 +931,9 @@ public class ReportExcelService : IReportExcelService
 
     private static void AppendJobDefinitionWorksheet(XLWorkbook wb, JobDetail detail, string jobCode, string jobDescription)
     {
-        var ws = wb.Worksheets.Add("İş planı");
+        var ws = wb.Worksheets.Add("Job definition");
         var r = 1;
-        ws.Cell(r, 1).Value = "İş tanımı özeti (API ile uyumlu)";
+        ws.Cell(r, 1).Value = "Job definition overview (aligned with API)";
         ws.Range(r, 1, r, 6).Merge();
         ws.Row(r).Style.Font.Bold = true;
         ws.Row(r).Style.Font.FontSize = 14;
@@ -936,18 +942,18 @@ public class ReportExcelService : IReportExcelService
         ws.Range(r, 1, r, 6).Merge();
         r += 2;
 
-        ws.Cell(r, 1).Value = "Aşamalar";
+        ws.Cell(r, 1).Value = "Stages";
         ws.Row(r).Style.Font.Bold = true;
         r++;
-        ws.Cell(r, 1).Value = "Sıra";
-        ws.Cell(r, 2).Value = "Ad";
-        ws.Cell(r, 3).Value = "Açıklama";
+        ws.Cell(r, 1).Value = "Order";
+        ws.Cell(r, 2).Value = "Name";
+        ws.Cell(r, 3).Value = "Description";
         ws.Row(r).Style.Font.Bold = true;
         r++;
         var orderedStages = detail.Stages.OrderBy(x => x.SortOrder).ToList();
         if (orderedStages.Count == 0)
         {
-            ws.Cell(r, 2).Value = "— Kayıtlı aşama yok —";
+            ws.Cell(r, 2).Value = "— No stages configured —";
             r++;
         }
         else
@@ -962,17 +968,17 @@ public class ReportExcelService : IReportExcelService
         }
 
         r++;
-        ws.Cell(r, 1).Value = "Çalışan ücretleri (işe özel)";
+        ws.Cell(r, 1).Value = "Participant rates (job-specific)";
         ws.Row(r).Style.Font.Bold = true;
         r++;
-        ws.Cell(r, 1).Value = "Kullanıcı adı";
-        ws.Cell(r, 2).Value = "Saatlik ücret";
-        ws.Cell(r, 3).Value = "Para birimi";
+        ws.Cell(r, 1).Value = "Username";
+        ws.Cell(r, 2).Value = "Hourly rate";
+        ws.Cell(r, 3).Value = "Currency";
         ws.Row(r).Style.Font.Bold = true;
         r++;
         if (detail.Participants.Count == 0)
         {
-            ws.Cell(r, 2).Value = "— Tanımlı çalışan yok —";
+            ws.Cell(r, 2).Value = "— No participants —";
             r++;
         }
         else
@@ -992,12 +998,12 @@ public class ReportExcelService : IReportExcelService
         }
 
         r++;
-        ws.Cell(r, 1).Value = "Planlanan saatler (aşama × çalışan)";
+        ws.Cell(r, 1).Value = "Planned hours (stage × person)";
         ws.Row(r).Style.Font.Bold = true;
         r++;
-        ws.Cell(r, 1).Value = "Aşama";
-        ws.Cell(r, 2).Value = "Kullanıcı";
-        ws.Cell(r, 3).Value = "Plan saat";
+        ws.Cell(r, 1).Value = "Stage";
+        ws.Cell(r, 2).Value = "User";
+        ws.Cell(r, 3).Value = "Planned hours";
         ws.Row(r).Style.Font.Bold = true;
         r++;
 
@@ -1005,13 +1011,13 @@ public class ReportExcelService : IReportExcelService
         {
             if (stageIndex >= 0 && stageIndex < orderedStagesArg.Count)
                 return orderedStagesArg[stageIndex].Name;
-            return stageIndex >= 0 ? $"Aşama #{stageIndex + 1}" : "?";
+            return stageIndex >= 0 ? $"Stage #{stageIndex + 1}" : "?";
         }
 
         var plans = detail.StagePlans.OrderBy(x => x.StageIndex).ThenBy(x => x.UserName).ToList();
         if (plans.Count == 0)
         {
-            ws.Cell(r, 2).Value = "— Plan satırı yok —";
+            ws.Cell(r, 2).Value = "— No plan lines —";
             r++;
         }
         else

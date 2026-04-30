@@ -1,32 +1,28 @@
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
 using CAKA.PerformanceApp.Models;
 using CAKA.PerformanceApp.Services;
+
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
 public class AdminReportsViewModel : ViewModelBase
 {
-    public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportPdfService reportPdfService, IReportExcelService reportExcelService, BackendApiClient api)
+    public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportExcelService reportExcelService, BackendApiClient api)
     {
         _workLogService = workLogService;
         _userStore = userStore;
-        _reportPdfService = reportPdfService;
         _reportExcelService = reportExcelService;
         _api = api;
         WeekGroups = new ObservableCollection<WeekWorkLogGroup>();
         AllUsers = new ObservableCollection<StoredUser>();
         Jobs = new ObservableCollection<Job>();
+        FilteredJobs = new ObservableCollection<Job>();
         RefreshCommand = new RelayCommand(_ => Refresh());
         ExportJobPerformanceCommand = new RelayCommand(_ => ExportJobPerformance(), _ => SelectedJob != null);
-        ExportWeekToPdfCommand = new RelayCommand(param =>
-        {
-            if (param is WeekWorkLogGroup group)
-                ExportWeekToPdf(group);
-        });
-        ExportAllWeeksToPdfCommand = new RelayCommand(_ => ExportAllWeeksToPdf());
         ExportWeekToExcelCommand = new RelayCommand(param =>
         {
             if (param is WeekWorkLogGroup group)
@@ -43,26 +39,68 @@ public class AdminReportsViewModel : ViewModelBase
 
     private readonly IWorkLogService _workLogService;
     private readonly IUserStore _userStore;
-    private readonly IReportPdfService _reportPdfService;
     private readonly IReportExcelService _reportExcelService;
     private readonly BackendApiClient _api;
     private Job? _selectedJob;
+    private string _jobFilterText = "";
+
+    private static readonly CompareInfo TurkishCompare = CultureInfo.GetCultureInfo("tr-TR").CompareInfo;
 
     public ObservableCollection<WeekWorkLogGroup> WeekGroups { get; }
     public ObservableCollection<StoredUser> AllUsers { get; }
     public ObservableCollection<Job> Jobs { get; }
+    public ObservableCollection<Job> FilteredJobs { get; }
+
+    /// <summary>İş kodu ve/veya açıklama üzerinden tablo filtresi (canlı).</summary>
+    public string JobFilterText
+    {
+        get => _jobFilterText;
+        set
+        {
+            if (SetProperty(ref _jobFilterText, value ?? ""))
+                ApplyJobFilter();
+        }
+    }
     public Job? SelectedJob
     {
         get => _selectedJob;
-        set => SetProperty(ref _selectedJob, value);
+        set
+        {
+            if (SetProperty(ref _selectedJob, value))
+                CommandManager.InvalidateRequerySuggested();
+        }
     }
     public ICommand RefreshCommand { get; }
-    public ICommand ExportWeekToPdfCommand { get; }
-    public ICommand ExportAllWeeksToPdfCommand { get; }
     public ICommand ExportWeekToExcelCommand { get; }
     public ICommand ExportAllWeeksToExcelCommand { get; }
     public ICommand DeleteSelectedCommand { get; }
     public ICommand ExportJobPerformanceCommand { get; }
+
+    private bool JobMatchesFilter(Job job)
+    {
+        var q = (JobFilterText ?? "").Trim();
+        if (q.Length == 0)
+            return true;
+        static int Idx(CompareInfo cmp, string? s, string needle) =>
+            cmp.IndexOf(string.IsNullOrEmpty(s) ? "" : s, needle, CompareOptions.IgnoreCase);
+
+        return Idx(TurkishCompare, job.Code, q) >= 0 || Idx(TurkishCompare, job.Description, q) >= 0;
+    }
+
+    private void ApplyJobFilter(Guid? preserveSelectionId = null)
+    {
+        var preserveId = preserveSelectionId ?? SelectedJob?.Id;
+        FilteredJobs.Clear();
+        foreach (var job in Jobs)
+        {
+            if (JobMatchesFilter(job))
+                FilteredJobs.Add(job);
+        }
+        SelectedJob = preserveId.HasValue
+            ? FilteredJobs.FirstOrDefault(j => j.Id == preserveId.Value)
+            : null;
+        CommandManager.InvalidateRequerySuggested();
+    }
 
     private static DateTime GetMonday(DateTime date)
     {
@@ -78,6 +116,8 @@ public class AdminReportsViewModel : ViewModelBase
         foreach (var u in _userStore.GetAll())
             AllUsers.Add(u);
 
+        var preserveJobId = SelectedJob?.Id;
+        SelectedJob = null;
         Jobs.Clear();
         try
         {
@@ -85,6 +125,8 @@ public class AdminReportsViewModel : ViewModelBase
                 Jobs.Add(j);
         }
         catch { /* API eski olabilir */ }
+
+        ApplyJobFilter(preserveJobId);
 
         WeekGroups.Clear();
         var all = _workLogService.GetAll();
@@ -105,20 +147,6 @@ public class AdminReportsViewModel : ViewModelBase
         }
     }
 
-    private void ExportWeekToPdf(WeekWorkLogGroup group)
-    {
-        var defaultName = $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.pdf";
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Filter = "PDF dosyası|*.pdf",
-            DefaultExt = ".pdf",
-            FileName = defaultName
-        };
-        if (dlg.ShowDialog() != true) return;
-        var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
-        _reportPdfService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
-    }
-
     private void ExportWeekToExcel(WeekWorkLogGroup group)
     {
         var defaultName = $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.xlsx";
@@ -131,44 +159,7 @@ public class AdminReportsViewModel : ViewModelBase
         if (dlg.ShowDialog() != true) return;
         var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
         _reportExcelService.GenerateWeekReport(dlg.FileName, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
-    }
-
-    /// <summary>
-    /// Kullanıcı bir klasör seçer; tüm haftaların PDF'leri o klasöre, her biri kendi hafta adıyla (Rapor_dd.MM.yyyy-dd.MM.yyyy.pdf) kaydedilir.
-    /// </summary>
-    private void ExportAllWeeksToPdf()
-    {
-        if (WeekGroups.Count == 0)
-        {
-            MessageBox.Show("Rapor oluşturmak için en az bir hafta verisi olmalı.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
-        var first = WeekGroups[0];
-        var defaultName = $"Rapor_{first.WeekStart:dd.MM.yyyy}-{first.WeekEnd:dd.MM.yyyy}.pdf";
-        var dlg = new Microsoft.Win32.SaveFileDialog
-        {
-            Title = "Tüm hafta PDF'lerinin kaydedileceği klasörü seçin (dosya adı yalnızca klasör için kullanılır)",
-            Filter = "PDF dosyası|*.pdf",
-            DefaultExt = ".pdf",
-            FileName = defaultName
-        };
-        if (dlg.ShowDialog() != true) return;
-
-        var folder = System.IO.Path.GetDirectoryName(dlg.FileName);
-        if (string.IsNullOrEmpty(folder))
-            return;
-
-        var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
-        var count = 0;
-        foreach (var group in WeekGroups)
-        {
-            var filePath = System.IO.Path.Combine(folder, $"Rapor_{group.WeekStart:dd.MM.yyyy}-{group.WeekEnd:dd.MM.yyyy}.pdf");
-            _reportPdfService.GenerateWeekReport(filePath, group.WeekStart, group.WeekEnd, group.Entries.ToList(), userNameToDisplay);
-            count++;
-        }
-
-        MessageBox.Show($"{count} adet haftalık PDF seçilen klasöre kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+        MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
     private void ExportAllWeeksToExcel()
@@ -259,12 +250,23 @@ public class AdminReportsViewModel : ViewModelBase
         };
         if (dlg.ShowDialog() != true) return;
 
+        JobDetail? jobDetail = null;
+        try
+        {
+            jobDetail = _api.GetJobDetail(job.Id);
+        }
+        catch
+        {
+            /* Detay alınamazsa rapor yine üretilir */
+        }
+
         _reportExcelService.GenerateJobPerformanceReport(
             dlg.FileName,
             job.Code,
             job.Description,
             jobLogs,
-            userNameToDisplay);
+            userNameToDisplay,
+            jobDetail);
         MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 }

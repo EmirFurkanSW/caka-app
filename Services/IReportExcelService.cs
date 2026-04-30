@@ -11,8 +11,9 @@ public interface IReportExcelService
         IReadOnlyList<WorkLog> entries,
         IReadOnlyDictionary<string, string> userNameToDisplayName);
 
-    /// <summary>Seçilen iş için çalışan bazlı profesyonel performans raporu. Hedef saat ve saatlik ücret Excel'de elle girilir; verim ve tahmini maliyet formülle hesaplanır.</summary>
+    /// <summary>Seçilen iş için çalışan bazlı performans raporu. İsteğe bağlı <paramref name="jobDetail"/> ile aşama/plan/ücret bilgisi ikinci sayfada ve saatlik ücrette otomatik doldurulur.</summary>
     void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
         IReadOnlyList<WorkLog> entries,
-        IReadOnlyDictionary<string, string> userNameToDisplayName);
+        IReadOnlyDictionary<string, string> userNameToDisplayName,
+        JobDetail? jobDetail = null);
 }

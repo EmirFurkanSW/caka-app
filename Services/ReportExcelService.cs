@@ -101,7 +101,8 @@ public class ReportExcelService : IReportExcelService
 
     public void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
         IReadOnlyList<WorkLog> entries,
-        IReadOnlyDictionary<string, string> userNameToDisplayName)
+        IReadOnlyDictionary<string, string> userNameToDisplayName,
+        JobDetail? jobDetail = null)
     {
         using var wb = new XLWorkbook();
         var ws = wb.Worksheets.Add("İş performansı");
@@ -132,7 +133,7 @@ public class ReportExcelService : IReportExcelService
         ws.Range(4, 1, 4, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
 
         ws.Cell(5, 1).Value =
-            "D: çalışan için hedef (maks.) saat — elle. F: saatlik ücret (USD) — elle. E (verim): 2−(Gerçekleşen÷Hedef), %100 = hedef sürede. G (tahmini maliyet): Hedef saat × Saatlik ücret (D×F), D ve F dolunca otomatik.";
+            "D: hedef (maks.) saat — elle. F: saatlik ücret — iş tanımında varsa otomatik (TL/USD), yoksa elle. E (verim): 2−(Gerçekleşen÷Hedef). G: tahmini maliyet D×F (F ile aynı para birimi).";
         ws.Range(5, 1, 5, 12).Merge();
         ws.Range(5, 1, 5, 12).Style.Font.Italic = true;
         ws.Range(5, 1, 5, 12).Style.Font.FontColor = XLColor.FromHtml("#6B7B8C");
@@ -145,8 +146,8 @@ public class ReportExcelService : IReportExcelService
             "Gerçekleşen Saat (bu iş)",
             "Maksimum Hedef Saat",
             "Verim (100% = hedefe uygun)",
-            "Saatlik Ücret (USD) — elle",
-            "Tahmini Maliyet (USD) — D×F",
+            "Saatlik ücret (iş tanımı / elle)",
+            "Tahmini maliyet (D×F)",
             "Kayıt Sayısı",
             "Çalışılan Gün",
             "İlk Kayıt",
@@ -192,6 +193,11 @@ public class ReportExcelService : IReportExcelService
         var row = headerRow + 1;
         foreach (var item in grouped)
         {
+            var participant = jobDetail?.Participants?.FirstOrDefault(p =>
+                string.Equals(p.UserName, item.UserName, StringComparison.OrdinalIgnoreCase));
+            var isUsd = string.Equals(participant?.HourlyRateCurrency?.Trim(), "USD", StringComparison.OrdinalIgnoreCase);
+            var moneyFmt = isUsd ? "$#,##0.00" : "#,##0.00 \"₺\"";
+
             ws.Cell(row, 1).Value = item.DisplayName;
             ws.Cell(row, 2).Value = item.UserName;
             ws.Cell(row, 3).Value = (double)item.Actual;
@@ -199,20 +205,27 @@ public class ReportExcelService : IReportExcelService
             ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
             // Verim: 100% = hedef sürede; örn. D=10 C=8 → 2-C/D = 1,2 → %120
             ws.Cell(row, 5).FormulaA1 = $"IF(OR(ISBLANK(D{row}),C{row}=0,D{row}=0),\"\",2-C{row}/D{row})";
-            ws.Cell(row, 6).Clear();
-            ws.Cell(row, 6).Style.NumberFormat.Format = "$#,##0.00";
+            if (participant != null)
+            {
+                ws.Cell(row, 6).Value = (double)participant.HourlyRate;
+                ws.Cell(row, 6).Style.NumberFormat.Format = moneyFmt;
+            }
+            else
+            {
+                ws.Cell(row, 6).Clear();
+                ws.Cell(row, 6).Style.NumberFormat.Format = moneyFmt;
+            }
             // Tahmini maliyet = hedef saat (D) × saatlik ücret (F)
             ws.Cell(row, 7).FormulaA1 = $"IF(OR(ISBLANK(D{row}),ISBLANK(F{row})),\"\",D{row}*F{row})";
             ws.Cell(row, 8).Value = item.LogCount;
             ws.Cell(row, 9).Value = item.WorkDayCount;
             ws.Cell(row, 10).Value = item.FirstDate;
             ws.Cell(row, 11).Value = item.LastDate;
-            ws.Cell(row, 12).Value = "—";
+            ws.Cell(row, 12).Value = participant != null ? "İş ücreti tanımlı" : "—";
 
             ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
             ws.Cell(row, 5).Style.NumberFormat.Format = "0.0%";
-            ws.Cell(row, 6).Style.NumberFormat.Format = "$#,##0.00";
-            ws.Cell(row, 7).Style.NumberFormat.Format = "$#,##0.00";
+            ws.Cell(row, 7).Style.NumberFormat.Format = moneyFmt;
             ws.Cell(row, 10).Style.DateFormat.Format = "dd.MM.yyyy";
             ws.Cell(row, 11).Style.DateFormat.Format = "dd.MM.yyyy";
             ws.Cell(row, 12).Style.Fill.BackgroundColor = XLColor.FromHtml("#F3F6FA");
@@ -236,7 +249,7 @@ public class ReportExcelService : IReportExcelService
             ws.Cell(row, 9).FormulaA1 = $"SUM(I{firstDataRow}:I{lastDataRow})";
             ws.Cell(row, 10).Clear();
             ws.Cell(row, 11).Clear();
-            ws.Cell(row, 12).Value = "G sütunu tahmini maliyet toplamı (satır formülleri).";
+            ws.Cell(row, 12).Value = "G: tahmini maliyet toplamı (satırlar farklı para biriminde olabilir; toplam yalnızca referans).";
 
             ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
             ws.Cell(row, 4).Style.NumberFormat.Format = "0.0";
@@ -259,6 +272,115 @@ public class ReportExcelService : IReportExcelService
         ws.Range(headerRow, 1, headerRow, 12).Style.Alignment.WrapText = true;
         ws.Row(headerRow).Height = 36;
 
+        if (jobDetail != null)
+            AppendJobDefinitionWorksheet(wb, jobDetail, jobCode, jobDescription);
+
         wb.SaveAs(filePath);
+    }
+
+    /// <summary>İş detayındaki aşamalar, çalışan ücretleri ve plan saatleri — referans sayfası.</summary>
+    private static void AppendJobDefinitionWorksheet(XLWorkbook wb, JobDetail detail, string jobCode, string jobDescription)
+    {
+        var ws = wb.Worksheets.Add("İş planı");
+        var r = 1;
+        ws.Cell(r, 1).Value = "İş tanımı özeti (API ile uyumlu)";
+        ws.Range(r, 1, r, 6).Merge();
+        ws.Row(r).Style.Font.Bold = true;
+        ws.Row(r).Style.Font.FontSize = 14;
+        r++;
+        ws.Cell(r, 1).Value = $"{jobCode} — {jobDescription}";
+        ws.Range(r, 1, r, 6).Merge();
+        r += 2;
+
+        ws.Cell(r, 1).Value = "Aşamalar";
+        ws.Row(r).Style.Font.Bold = true;
+        r++;
+        ws.Cell(r, 1).Value = "Sıra";
+        ws.Cell(r, 2).Value = "Ad";
+        ws.Cell(r, 3).Value = "Açıklama";
+        ws.Row(r).Style.Font.Bold = true;
+        r++;
+        var orderedStages = detail.Stages.OrderBy(x => x.SortOrder).ToList();
+        if (orderedStages.Count == 0)
+        {
+            ws.Cell(r, 2).Value = "— Kayıtlı aşama yok —";
+            r++;
+        }
+        else
+        {
+            for (var i = 0; i < orderedStages.Count; i++)
+            {
+                ws.Cell(r, 1).Value = i + 1;
+                ws.Cell(r, 2).Value = orderedStages[i].Name;
+                ws.Cell(r, 3).Value = orderedStages[i].Description;
+                r++;
+            }
+        }
+
+        r++;
+        ws.Cell(r, 1).Value = "Çalışan ücretleri (işe özel)";
+        ws.Row(r).Style.Font.Bold = true;
+        r++;
+        ws.Cell(r, 1).Value = "Kullanıcı adı";
+        ws.Cell(r, 2).Value = "Saatlik ücret";
+        ws.Cell(r, 3).Value = "Para birimi";
+        ws.Row(r).Style.Font.Bold = true;
+        r++;
+        if (detail.Participants.Count == 0)
+        {
+            ws.Cell(r, 2).Value = "— Tanımlı çalışan yok —";
+            r++;
+        }
+        else
+        {
+            foreach (var p in detail.Participants.OrderBy(x => x.UserName, StringComparer.OrdinalIgnoreCase))
+            {
+                ws.Cell(r, 1).Value = p.UserName;
+                ws.Cell(r, 2).Value = (double)p.HourlyRate;
+                ws.Cell(r, 3).Value = string.IsNullOrWhiteSpace(p.HourlyRateCurrency) ? "TRY" : p.HourlyRateCurrency.ToUpperInvariant();
+                ws.Cell(r, 2).Style.NumberFormat.Format =
+                    string.Equals(p.HourlyRateCurrency?.Trim(), "USD", StringComparison.OrdinalIgnoreCase)
+                        ? "$#,##0.00"
+                        : "#,##0.00 \"₺\"";
+                r++;
+            }
+        }
+
+        r++;
+        ws.Cell(r, 1).Value = "Planlanan saatler (aşama × çalışan)";
+        ws.Row(r).Style.Font.Bold = true;
+        r++;
+        ws.Cell(r, 1).Value = "Aşama";
+        ws.Cell(r, 2).Value = "Kullanıcı";
+        ws.Cell(r, 3).Value = "Plan saat";
+        ws.Row(r).Style.Font.Bold = true;
+        r++;
+
+        string StageNameAt(int stageIndex)
+        {
+            if (stageIndex >= 0 && stageIndex < orderedStages.Count)
+                return orderedStages[stageIndex].Name;
+            return stageIndex >= 0 ? $"Aşama #{stageIndex + 1}" : "?";
+        }
+
+        var plans = detail.StagePlans.OrderBy(x => x.StageIndex).ThenBy(x => x.UserName).ToList();
+        if (plans.Count == 0)
+        {
+            ws.Cell(r, 2).Value = "— Plan satırı yok —";
+            r++;
+        }
+        else
+        {
+            foreach (var pl in plans)
+            {
+                ws.Cell(r, 1).Value = StageNameAt(pl.StageIndex);
+                ws.Cell(r, 2).Value = pl.UserName;
+                ws.Cell(r, 3).Value = (double)pl.PlannedHours;
+                ws.Cell(r, 3).Style.NumberFormat.Format = "0.0";
+                r++;
+            }
+        }
+
+        ws.Columns().AdjustToContents();
     }
 }

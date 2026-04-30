@@ -111,10 +111,11 @@
                                               SelectedValuePath="Index"
                                               DisplayMemberPath="Label"/>
                                     <ComboBox Grid.Column="1" Margin="8,0" Padding="8,6"
-                                              ItemsSource="{Binding DataContext.UserOptions, ElementName=Root}"
+                                              ItemsSource="{Binding DataContext.PlanParticipantPickList, ElementName=Root}"
                                               SelectedValue="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="UserName"
-                                              DisplayMemberPath="DisplayName"/>
+                                              DisplayMemberPath="DisplayName"
+                                              ToolTip="Önce işe çalışan ekleyin; planda yalnızca onlar seçilir."/>
                                     <TextBox Grid.Column="2" Margin="8,0" Padding="8,6" Text="{Binding PlannedHours, UpdateSourceTrigger=PropertyChanged}"/>
                                     <Button Grid.Column="3" Content="Sil" Padding="12,6"
                                             Command="{Binding DataContext.RemovePlanCommand, ElementName=Root}"

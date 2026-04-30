@@ -29,11 +29,13 @@ public class AdminJobsViewModel : ViewModelBase
         EditPlans = new ObservableCollection<JobPlanEditRow>();
         StagePickList = new ObservableCollection<StagePickItem>();
         UserOptions = new ObservableCollection<StoredUser>();
+        PlanParticipantPickList = new ObservableCollection<StoredUser>();
 
         CurrencyOptions.Add(new CurrencyOption { Code = "TRY", Label = "TL (TRY)" });
         CurrencyOptions.Add(new CurrencyOption { Code = "USD", Label = "USD ($)" });
 
         EditStages.CollectionChanged += OnEditStagesCollectionChanged;
+        EditParticipants.CollectionChanged += OnEditParticipantsCollectionChanged;
 
         RefreshCommand = new RelayCommand(_ => Refresh());
         AddJobCommand = new RelayCommand(_ => AddJob(), _ => !string.IsNullOrWhiteSpace(NewCode));
@@ -60,6 +62,8 @@ public class AdminJobsViewModel : ViewModelBase
     public ObservableCollection<JobPlanEditRow> EditPlans { get; }
     public ObservableCollection<StagePickItem> StagePickList { get; }
     public ObservableCollection<StoredUser> UserOptions { get; }
+    /// <summary>Plan satırları: yalnızca işe eklenmiş çalışanlar (üst liste).</summary>
+    public ObservableCollection<StoredUser> PlanParticipantPickList { get; }
     public ObservableCollection<CurrencyOption> CurrencyOptions { get; } = new();
 
     public Job? SelectedJob
@@ -142,6 +146,29 @@ public class AdminJobsViewModel : ViewModelBase
             RebuildStagePickList();
     }
 
+    private void OnEditParticipantsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        if (e.NewItems != null)
+        {
+            foreach (JobParticipantEditRow row in e.NewItems)
+                row.PropertyChanged += ParticipantRowOnPropertyChanged;
+        }
+
+        if (e.OldItems != null)
+        {
+            foreach (JobParticipantEditRow row in e.OldItems)
+                row.PropertyChanged -= ParticipantRowOnPropertyChanged;
+        }
+
+        RebuildPlanParticipantPickList();
+    }
+
+    private void ParticipantRowOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(JobParticipantEditRow.UserName))
+            RebuildPlanParticipantPickList();
+    }
+
     private void ClearStatus()
     {
         StatusMessage = string.Empty;
@@ -158,6 +185,49 @@ public class AdminJobsViewModel : ViewModelBase
                 UserOptions.Add(u);
         }
         catch { /* liste boş kalır */ }
+        RebuildPlanParticipantPickList();
+    }
+
+    private void ReleaseParticipantSubscriptions(IEnumerable<JobParticipantEditRow> rows)
+    {
+        foreach (var r in rows)
+            r.PropertyChanged -= ParticipantRowOnPropertyChanged;
+    }
+
+    private StoredUser ParticipantPickVm(string userName)
+    {
+        var un = userName.Trim();
+        var src = UserOptions.FirstOrDefault(x => string.Equals(x.UserName, un, StringComparison.OrdinalIgnoreCase));
+        return new StoredUser
+        {
+            UserName = un,
+            DisplayName = string.IsNullOrWhiteSpace(src?.DisplayName) ? un : src.DisplayName,
+            Password = "",
+            Role = src?.Role ?? "Personel"
+        };
+    }
+
+    private void RebuildPlanParticipantPickList()
+    {
+        var distinct = EditParticipants
+            .Select(p => p.UserName?.Trim() ?? "")
+            .Where(s => s.Length > 0)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        PlanParticipantPickList.Clear();
+
+        foreach (var un in distinct.OrderBy(u =>
+                 {
+                     var src = UserOptions.FirstOrDefault(x => string.Equals(x.UserName, u, StringComparison.OrdinalIgnoreCase));
+                     return string.IsNullOrWhiteSpace(src?.DisplayName) ? u : src.DisplayName;
+                 }, StringComparer.CurrentCultureIgnoreCase))
+            PlanParticipantPickList.Add(ParticipantPickVm(un));
+
+        var allowed = distinct.ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var row in EditPlans.Where(p =>
+                     string.IsNullOrWhiteSpace(p.UserName) || !allowed.Contains(p.UserName.Trim())).ToList())
+            row.UserName = "";
     }
 
     private void RebuildStagePickList()
@@ -166,17 +236,15 @@ public class AdminJobsViewModel : ViewModelBase
         for (var i = 0; i < EditStages.Count; i++)
         {
             var s = EditStages[i];
-            StagePickList.Add(new StagePickItem { Index = i, Label = FormatPlanStagePickLabel(s.StageNumber, s.Description, s.ResolvedName) });
+            StagePickList.Add(new StagePickItem { Index = i, Label = FormatPlanStagePickLabel(s.Description, s.ResolvedName) });
         }
     }
 
-    /// <summary>Plan açılır listesi: «1. Stage 1 - açıklama» veya açıklama yoksa «1. Stage 1».</summary>
-    private static string FormatPlanStagePickLabel(int stageNumber, string? stageDescription, string resolvedNameFallback)
+    /// <summary>Plan aşama combobox: «Stage 1» veya «Stage 1 - açıklama».</summary>
+    private static string FormatPlanStagePickLabel(string? stageDescription, string resolvedNameFallback)
     {
         var desc = (stageDescription ?? "").Trim();
-        if (string.IsNullOrEmpty(desc))
-            return $"{stageNumber}. {resolvedNameFallback}";
-        return $"{stageNumber}. Stage {stageNumber} - {desc}";
+        return string.IsNullOrEmpty(desc) ? resolvedNameFallback : $"{resolvedNameFallback} - {desc}";
     }
 
     private void ClearEditors()
@@ -190,10 +258,12 @@ public class AdminJobsViewModel : ViewModelBase
     {
         foreach (var r in EditStages)
             r.PropertyChanged -= StageRowOnPropertyChanged;
+        ReleaseParticipantSubscriptions(EditParticipants);
         EditStages.Clear();
         EditParticipants.Clear();
         EditPlans.Clear();
         RebuildStagePickList();
+        RebuildPlanParticipantPickList();
     }
 
     private void LoadEditorsFromDetail(JobDetail detail)
@@ -206,6 +276,7 @@ public class AdminJobsViewModel : ViewModelBase
             EditStages.Add(new JobStageEditRow { Description = s.Description ?? "" });
         RenumberStages();
 
+        ReleaseParticipantSubscriptions(EditParticipants);
         EditParticipants.Clear();
         foreach (var p in detail.Participants)
         {
@@ -222,6 +293,7 @@ public class AdminJobsViewModel : ViewModelBase
         RenormalizePlanStageIndices();
 
         RebuildStagePickList();
+        RebuildPlanParticipantPickList();
         StatusMessage = string.Empty;
     }
 

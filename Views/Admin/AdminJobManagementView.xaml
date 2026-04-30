@@ -1,4 +1,4 @@
-<UserControl x:Class="CAKA.PerformanceApp.Views.Admin.AdminJobsView"
+<UserControl x:Class="CAKA.PerformanceApp.Views.Admin.AdminJobManagementView"
              x:Name="Root"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -7,10 +7,37 @@
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="880">
     <ScrollViewer VerticalScrollBarVisibility="Auto">
         <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource CardStyle}" Margin="0,0,0,20">
+                <StackPanel>
+                    <Grid Margin="0,0,0,12">
+                        <TextBlock Text="Kayıtlı İşler" Style="{StaticResource TitleTextStyle}" VerticalAlignment="Center"/>
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Content="Yenile" Command="{Binding RefreshCommand}" Margin="0,0,8,0"
+                                    Padding="12,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
+                            <Button Content="Kapat / Tekrar aç" Command="{Binding CloseOrReopenJobCommand}" Margin="0,0,8,0"
+                                    Padding="12,8" Background="#FF9800" Foreground="White"/>
+                            <Button Content="Seçileni sil" Command="{Binding DeleteJobCommand}"
+                                    Padding="12,8" Background="#E57373" Foreground="White"/>
+                        </StackPanel>
+                    </Grid>
+                    <DataGrid ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob, Mode=TwoWay}"
+                              AutoGenerateColumns="False" IsReadOnly="True" CanUserAddRows="False"
+                              HeadersVisibility="Column" RowHeight="36" BorderThickness="0"
+                              BorderBrush="{StaticResource BorderBrush}" Margin="0,0,0,8">
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="İş kodu" Binding="{Binding Code}" Width="120" MinWidth="100"/>
+                            <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Durum" Binding="{Binding StatusText}" Width="90" MinWidth="80"/>
+                        </DataGrid.Columns>
+                    </DataGrid>
+                    <TextBlock Text="İpucu: Aşağıdaki düzenleme alanları seçili işe uygulanır." Style="{StaticResource SubtitleTextStyle}" />
+                </StackPanel>
+            </Border>
+
             <Border Style="{StaticResource CardStyle}">
                 <StackPanel>
-                    <TextBlock Text="Yeni iş ekle" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
-                    <TextBlock Text="Bu sayfada yalnızca yeni iş tanımı eklenir. Güncelleme/silme/aktif-pasif işlemleri için menüdeki İş Yönetimi sayfasını kullanın." Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,12"/>
+                    <TextBlock Text="Seçili işi güncelle" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
+
                     <Grid Margin="0,0,0,12">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" MinWidth="140"/>
@@ -19,21 +46,19 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
                             <TextBlock Text="İş kodu" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding NewCode, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
-                                     ToolTip="Örn. TRCK-0064"/>
+                            <TextBox Text="{Binding NewCode, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="12,0">
                             <TextBlock Text="Açıklama" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
-                                     ToolTip="Örn. DemirExport"/>
+                            <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12,0,0,0">
-                            <Button Content="İş ekle" Command="{Binding AddJobCommand}"
-                                    Style="{StaticResource PrimaryButtonStyle}" Padding="20,10" Margin="0,0,8,0"/>
+                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Margin="12,0,0,0">
+                            <Button Content="Seçileni güncelle" Command="{Binding UpdateJobCommand}"
+                                    Style="{StaticResource PrimaryButtonStyle}" Padding="16,10"/>
                         </StackPanel>
                     </Grid>
 
-                    <TextBlock Text="Aşamalar (sıra: Stage 1, 2, 3…; bir satır silinince numaralar otomatik kayar)" Style="{StaticResource SubtitleTextStyle}" Margin="0,8,0,6"/>
+                    <TextBlock Text="Aşamalar" Style="{StaticResource SubtitleTextStyle}" Margin="0,8,0,6"/>
                     <ItemsControl ItemsSource="{Binding EditStages}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -44,10 +69,8 @@
                                         <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Grid.Column="0" Padding="8,8,8,6" VerticalAlignment="Center"
-                                               Text="{Binding ResolvedName}" FontWeight="SemiBold"
-                                               ToolTip="Listedeki sıra; silinen aşamadan sonrakiler bir numara yukarı kayar."/>
-                                    <TextBox Grid.Column="1" Margin="8,0" Padding="8,6" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="Aşama açıklaması (isteğe bağlı)"/>
+                                               Text="{Binding ResolvedName}" FontWeight="SemiBold"/>
+                                    <TextBox Grid.Column="1" Margin="8,0" Padding="8,6" Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}"/>
                                     <Button Grid.Column="2" Content="Sil" Padding="12,6"
                                             Command="{Binding DataContext.RemoveStageCommand, ElementName=Root}"
                                             CommandParameter="{Binding}"/>
@@ -58,7 +81,7 @@
                     <Button Content="+ Aşama ekle" Command="{Binding AddStageCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"
                             Padding="12,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
 
-                    <TextBlock Text="Bu işe atanmış çalışanlar ve işe özel saatlik ücret" Style="{StaticResource SubtitleTextStyle}" Margin="0,16,0,6"/>
+                    <TextBlock Text="İşe atanmış çalışanlar ve saatlik ücret" Style="{StaticResource SubtitleTextStyle}" Margin="0,16,0,6"/>
                     <ItemsControl ItemsSource="{Binding EditParticipants}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -74,14 +97,12 @@
                                               SelectedValue="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="UserName"
                                               DisplayMemberPath="DisplayName"/>
-                                    <TextBox Grid.Column="1" Margin="8,0" Padding="8,6" Text="{Binding HourlyRate, UpdateSourceTrigger=PropertyChanged}"
-                                              ToolTip="Saatlik tutar"/>
+                                    <TextBox Grid.Column="1" Margin="8,0" Padding="8,6" Text="{Binding HourlyRate, UpdateSourceTrigger=PropertyChanged}"/>
                                     <ComboBox Grid.Column="2" Margin="8,0" Padding="8,6"
                                               ItemsSource="{Binding DataContext.CurrencyOptions, ElementName=Root}"
                                               SelectedValue="{Binding Currency, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="Code"
-                                              DisplayMemberPath="Label"
-                                              ToolTip="Ücret birimi"/>
+                                              DisplayMemberPath="Label"/>
                                     <Button Grid.Column="3" Content="Sil" Padding="12,6"
                                             Command="{Binding DataContext.RemoveParticipantCommand, ElementName=Root}"
                                             CommandParameter="{Binding}"/>
@@ -92,7 +113,7 @@
                     <Button Content="+ Çalışan satırı ekle" Command="{Binding AddParticipantCommand}" HorizontalAlignment="Left" Margin="0,8,0,0"
                             Padding="12,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
 
-                    <TextBlock Text="Plan: hangi çalışan hangi aşamada kaç saat" Style="{StaticResource SubtitleTextStyle}" Margin="0,16,0,6"/>
+                    <TextBlock Text="Plan: çalışan × aşama × saat" Style="{StaticResource SubtitleTextStyle}" Margin="0,16,0,6"/>
                     <ItemsControl ItemsSource="{Binding EditPlans}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -112,8 +133,7 @@
                                               ItemsSource="{Binding DataContext.PlanParticipantPickList, ElementName=Root}"
                                               SelectedValue="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="UserName"
-                                              DisplayMemberPath="DisplayName"
-                                              ToolTip="Önce işe çalışan ekleyin; planda yalnızca onlar seçilir."/>
+                                              DisplayMemberPath="DisplayName"/>
                                     <TextBox Grid.Column="2" Margin="8,0" Padding="8,6" Text="{Binding PlannedHours, UpdateSourceTrigger=PropertyChanged}"/>
                                     <Button Grid.Column="3" Content="Sil" Padding="12,6"
                                             Command="{Binding DataContext.RemovePlanCommand, ElementName=Root}"

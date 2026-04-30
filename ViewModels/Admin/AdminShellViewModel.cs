@@ -18,6 +18,8 @@ public class AdminShellViewModel : ViewModelBase
         AdminEmployeesViewModel employeesVm,
         AdminReportsViewModel reportsVm,
         AdminJobsViewModel jobsVm,
+        AdminJobManagementViewModel jobManagementVm,
+        CAKA.PerformanceApp.ViewModels.Personel.PersonelAddWorkViewModel addWorkVm,
         AdminSettingsViewModel settingsVm)
     {
         _authService = authService;
@@ -28,9 +30,12 @@ public class AdminShellViewModel : ViewModelBase
             new("Dashboard", "ViewDashboard", () => NavigateTo(dashboardVm)),
             new("Çalışanlar", "AccountGroup", () => NavigateTo(employeesVm)),
             new("İş Ekleme", "Briefcase", () => NavigateTo(jobsVm)),
+            new("İş Yönetimi", "BriefcaseEdit", () => NavigateTo(jobManagementVm)),
             new("Raporlar", "ChartBar", () => NavigateTo(reportsVm)),
             new("Ayarlar", "Cog", () => NavigateTo(settingsVm))
         };
+        if (_authService.CurrentUser?.Role == Models.UserRole.Yonetici)
+            MenuItems.Insert(3, new AdminMenuItem("İş Kaydı Gir", "PlusCircle", () => NavigateTo(addWorkVm)));
 
         NavigateCommand = new RelayCommand(param =>
         {
@@ -73,6 +78,8 @@ public class AdminShellViewModel : ViewModelBase
         PageTitle = page is AdminDashboardViewModel ? "Dashboard"
             : page is AdminEmployeesViewModel ? "Çalışanlar"
             : page is AdminJobsViewModel ? "İş Ekleme"
+            : page is AdminJobManagementViewModel ? "İş Yönetimi"
+            : page is CAKA.PerformanceApp.ViewModels.Personel.PersonelAddWorkViewModel ? "İş Kaydı Gir"
             : page is AdminReportsViewModel ? "Raporlar"
             : "Ayarlar";
         if (page is INavigationRefresh nav)

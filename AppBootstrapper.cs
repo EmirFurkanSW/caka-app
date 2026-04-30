@@ -55,6 +55,7 @@ public static class AppBootstrapper
         services.AddTransient<ViewModels.Admin.AdminEmployeesViewModel>();
         services.AddTransient<ViewModels.Admin.AdminReportsViewModel>();
         services.AddTransient<ViewModels.Admin.AdminJobsViewModel>();
+        services.AddTransient<ViewModels.Admin.AdminJobManagementViewModel>();
         services.AddTransient<ViewModels.Admin.AdminSettingsViewModel>();
         services.AddTransient<ViewModels.Personel.PersonelShellViewModel>();
         services.AddTransient<ViewModels.Personel.PersonelDashboardViewModel>();

@@ -8,7 +8,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
-public class AdminDashboardViewModel : ViewModelBase
+public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
 {
     public AdminDashboardViewModel(IWorkLogService workLogService, IUserStore userStore)
     {
@@ -121,4 +121,6 @@ public class AdminDashboardViewModel : ViewModelBase
     {
         RefreshAsync();
     }
+
+    public void RefreshOnNavigate() => RefreshAsync();
 }

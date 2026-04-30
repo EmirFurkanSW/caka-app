@@ -9,7 +9,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
-public class AdminReportsViewModel : ViewModelBase
+public class AdminReportsViewModel : ViewModelBase, INavigationRefresh
 {
     public AdminReportsViewModel(IWorkLogService workLogService, IUserStore userStore, IReportExcelService reportExcelService, BackendApiClient api)
     {
@@ -108,7 +108,7 @@ public class AdminReportsViewModel : ViewModelBase
         return d.AddDays(-daysToMonday);
     }
 
-    public void Refresh()
+    public void Refresh(bool resetJobFilters = false)
     {
         AllUsers.Clear();
         AllUsers.Add(new StoredUser { UserName = "", DisplayName = "Tüm kullanıcılar" });
@@ -122,7 +122,12 @@ public class AdminReportsViewModel : ViewModelBase
             /* api/users reddederse veya bağlantı yoksa giriş yine yapılabilsin */
         }
 
-        var preserveJobId = SelectedJob?.Id;
+        var preserveJobId = resetJobFilters ? null : SelectedJob?.Id;
+        if (resetJobFilters && _jobFilterText.Length > 0)
+        {
+            _jobFilterText = "";
+            OnPropertyChanged(nameof(JobFilterText));
+        }
         SelectedJob = null;
         Jobs.Clear();
         try
@@ -282,4 +287,6 @@ public class AdminReportsViewModel : ViewModelBase
             jobDetail);
         MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
+
+    public void RefreshOnNavigate() => Refresh(resetJobFilters: true);
 }

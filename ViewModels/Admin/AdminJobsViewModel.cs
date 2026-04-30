@@ -13,7 +13,7 @@ namespace CAKA.PerformanceApp.ViewModels.Admin;
 /// <summary>
 /// Admin: İş tanımı (kod, açıklama), aşamalar, işe özel saatlik ücretler ve aşama bazlı planlanan saatler.
 /// </summary>
-public class AdminJobsViewModel : ViewModelBase
+public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
 {
     private string _newCode = string.Empty;
     private string _newDescription = string.Empty;
@@ -417,9 +417,9 @@ public class AdminJobsViewModel : ViewModelBase
             EditPlans.Remove(row);
     }
 
-    public void Refresh()
+    public void Refresh(bool preserveSelection = true)
     {
-        var prevId = SelectedJob?.Id;
+        var prevId = preserveSelection ? SelectedJob?.Id : null;
         Jobs.Clear();
         try
         {
@@ -435,6 +435,12 @@ public class AdminJobsViewModel : ViewModelBase
 
         if (prevId.HasValue)
             SelectedJob = Jobs.FirstOrDefault(j => j.Id == prevId.Value);
+    }
+
+    public void RefreshOnNavigate()
+    {
+        SelectedJob = null;
+        Refresh(preserveSelection: false);
     }
 
     private void AddJob()

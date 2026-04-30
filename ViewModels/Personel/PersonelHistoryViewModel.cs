@@ -7,7 +7,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Personel;
 
-public class PersonelHistoryViewModel : ViewModelBase
+public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
 {
     public PersonelHistoryViewModel(IAuthService authService, IWorkLogService workLogService, IReportPdfService reportPdfService, IReportExcelService reportExcelService)
     {
@@ -223,5 +223,11 @@ public class PersonelHistoryViewModel : ViewModelBase
             count++;
         }
         MessageBox.Show($"{count} adet haftalık Excel kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
+    }
+
+    public void RefreshOnNavigate()
+    {
+        _pendingDeleteIds.Clear();
+        Refresh();
     }
 }

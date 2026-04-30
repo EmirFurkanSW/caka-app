@@ -5,7 +5,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
-public class AdminSettingsViewModel : ViewModelBase
+public class AdminSettingsViewModel : ViewModelBase, INavigationRefresh
 {
     private string _currentPassword = string.Empty;
     private string _newPassword = string.Empty;
@@ -89,5 +89,13 @@ public class AdminSettingsViewModel : ViewModelBase
         NewPassword = "";
         ConfirmPassword = "";
         StatusMessage = isAdmin ? "Ana yönetici şifresi güncellendi." : "Şifreniz güncellendi.";
+    }
+
+    public void RefreshOnNavigate()
+    {
+        CurrentPassword = "";
+        NewPassword = "";
+        ConfirmPassword = "";
+        StatusMessage = "";
     }
 }

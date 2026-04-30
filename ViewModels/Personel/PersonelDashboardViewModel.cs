@@ -6,7 +6,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Personel;
 
-public class PersonelDashboardViewModel : ViewModelBase
+public class PersonelDashboardViewModel : ViewModelBase, INavigationRefresh
 {
     private decimal _weeklyTotalHours;
 
@@ -44,4 +44,6 @@ public class PersonelDashboardViewModel : ViewModelBase
             .Take(10))
             RecentWorkLogs.Add(log);
     }
+
+    public void RefreshOnNavigate() => Refresh();
 }

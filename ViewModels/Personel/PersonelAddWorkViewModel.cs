@@ -7,7 +7,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Personel;
 
-public class PersonelAddWorkViewModel : ViewModelBase
+public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
 {
     private DateTime? _selectedDate = DateTime.Today;
     private string _statusMessage = string.Empty;
@@ -105,6 +105,17 @@ public class PersonelAddWorkViewModel : ViewModelBase
     {
         _jobDetailCache.Clear();
         LoadJobs();
+    }
+
+    /// <summary>Menüden tekrar girildiğinde formları ve satırları ilk haline döndürür.</summary>
+    public void RefreshOnNavigate()
+    {
+        _jobDetailCache.Clear();
+        LoadJobs();
+        Entries.Clear();
+        SelectedDate = DateTime.Today;
+        StatusMessage = "";
+        AddRow();
     }
 
     private void AddRow()

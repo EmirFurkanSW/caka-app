@@ -5,7 +5,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Personel;
 
-public class PersonelProfileViewModel : ViewModelBase
+public class PersonelProfileViewModel : ViewModelBase, INavigationRefresh
 {
     private string _currentPassword = string.Empty;
     private string _newPassword = string.Empty;
@@ -94,5 +94,13 @@ public class PersonelProfileViewModel : ViewModelBase
         NewPassword = "";
         ConfirmPassword = "";
         StatusMessage = "Şifreniz güncellendi.";
+    }
+
+    public void RefreshOnNavigate()
+    {
+        CurrentPassword = "";
+        NewPassword = "";
+        ConfirmPassword = "";
+        StatusMessage = "";
     }
 }

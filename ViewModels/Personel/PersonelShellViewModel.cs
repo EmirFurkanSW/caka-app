@@ -24,10 +24,10 @@ public class PersonelShellViewModel : ViewModelBase
 
         MenuItems = new ObservableCollection<PersonelMenuItem>
         {
-            new("Dashboard", "ViewDashboard", () => CurrentPage = dashboardVm),
-            new("İş Kaydı Gir", "PlusCircle", () => CurrentPage = addWorkVm),
-            new("Geçmiş", "History", () => CurrentPage = historyVm),
-            new("Profil", "Account", () => CurrentPage = profileVm)
+            new("Dashboard", "ViewDashboard", () => NavigateTo(dashboardVm)),
+            new("İş Kaydı Gir", "PlusCircle", () => NavigateTo(addWorkVm)),
+            new("Geçmiş", "History", () => NavigateTo(historyVm)),
+            new("Profil", "Account", () => NavigateTo(profileVm))
         };
 
         NavigateCommand = new RelayCommand(param =>
@@ -38,7 +38,7 @@ public class PersonelShellViewModel : ViewModelBase
 
         LogoutCommand = new RelayCommand(_ => DoLogout());
 
-        CurrentPage = dashboardVm;
+        NavigateTo(dashboardVm);
     }
 
     private readonly IAuthService _authService;
@@ -55,17 +55,24 @@ public class PersonelShellViewModel : ViewModelBase
         get => _currentPage;
         set
         {
-            if (SetProperty(ref _currentPage, value) && value != null)
+            if (value == null)
             {
-                if (value is PersonelDashboardViewModel dashboard)
-                    dashboard.Refresh();
-                if (value is PersonelAddWorkViewModel addWork)
-                    addWork.Refresh();
-                if (value is PersonelHistoryViewModel history)
-                    history.Refresh();
-                PageTitle = value is PersonelDashboardViewModel ? "Dashboard" : value is PersonelAddWorkViewModel ? "İş Kaydı Gir" : value is PersonelHistoryViewModel ? "Geçmiş" : "Profil";
+                SetProperty(ref _currentPage, null);
+                return;
             }
+            NavigateTo(value);
         }
+    }
+
+    private void NavigateTo(ViewModelBase page)
+    {
+        SetProperty(ref _currentPage, page);
+        PageTitle = page is PersonelDashboardViewModel ? "Dashboard"
+            : page is PersonelAddWorkViewModel ? "İş Kaydı Gir"
+            : page is PersonelHistoryViewModel ? "Geçmiş"
+            : "Profil";
+        if (page is INavigationRefresh nav)
+            nav.RefreshOnNavigate();
     }
 
     public string PageTitle

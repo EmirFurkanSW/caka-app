@@ -25,11 +25,11 @@ public class AdminShellViewModel : ViewModelBase
 
         MenuItems = new ObservableCollection<AdminMenuItem>
         {
-            new("Dashboard", "ViewDashboard", () => CurrentPage = dashboardVm),
-            new("Çalışanlar", "AccountGroup", () => CurrentPage = employeesVm),
-            new("İş Ekleme", "Briefcase", () => CurrentPage = jobsVm),
-            new("Raporlar", "ChartBar", () => CurrentPage = reportsVm),
-            new("Ayarlar", "Cog", () => CurrentPage = settingsVm)
+            new("Dashboard", "ViewDashboard", () => NavigateTo(dashboardVm)),
+            new("Çalışanlar", "AccountGroup", () => NavigateTo(employeesVm)),
+            new("İş Ekleme", "Briefcase", () => NavigateTo(jobsVm)),
+            new("Raporlar", "ChartBar", () => NavigateTo(reportsVm)),
+            new("Ayarlar", "Cog", () => NavigateTo(settingsVm))
         };
 
         NavigateCommand = new RelayCommand(param =>
@@ -40,7 +40,7 @@ public class AdminShellViewModel : ViewModelBase
 
         LogoutCommand = new RelayCommand(_ => DoLogout());
 
-        CurrentPage = dashboardVm;
+        NavigateTo(dashboardVm);
     }
 
     private readonly IAuthService _authService;
@@ -57,22 +57,25 @@ public class AdminShellViewModel : ViewModelBase
         get => _currentPage;
         set
         {
-            if (SetProperty(ref _currentPage, value) && value != null)
+            if (value == null)
             {
-                if (value is AdminDashboardViewModel dashboard)
-                    dashboard.RefreshAsync();
-                if (value is AdminEmployeesViewModel employees)
-                {
-                    employees.Reset();
-                    employees.Refresh();
-                }
-                if (value is AdminJobsViewModel jobs)
-                    jobs.Refresh();
-                if (value is AdminReportsViewModel reports)
-                    reports.Refresh();
-                PageTitle = value is AdminDashboardViewModel ? "Dashboard" : value is AdminEmployeesViewModel ? "Çalışanlar" : value is AdminJobsViewModel ? "İş Ekleme" : value is AdminReportsViewModel ? "Raporlar" : "Ayarlar";
+                SetProperty(ref _currentPage, null);
+                return;
             }
+            NavigateTo(value);
         }
+    }
+
+    private void NavigateTo(ViewModelBase page)
+    {
+        SetProperty(ref _currentPage, page);
+        PageTitle = page is AdminDashboardViewModel ? "Dashboard"
+            : page is AdminEmployeesViewModel ? "Çalışanlar"
+            : page is AdminJobsViewModel ? "İş Ekleme"
+            : page is AdminReportsViewModel ? "Raporlar"
+            : "Ayarlar";
+        if (page is INavigationRefresh nav)
+            nav.RefreshOnNavigate();
     }
 
     public string PageTitle

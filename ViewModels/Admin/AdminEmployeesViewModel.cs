@@ -7,7 +7,7 @@ using CAKA.PerformanceApp.Services;
 
 namespace CAKA.PerformanceApp.ViewModels.Admin;
 
-public class AdminEmployeesViewModel : ViewModelBase
+public class AdminEmployeesViewModel : ViewModelBase, INavigationRefresh
 {
     /// <summary>Arayüzdeki rol metnini API değerine çevirir (Yönetici / Yonetici karışıklığına dayanıklı).</summary>
     private static string MapUiRoleToApi(string? uiChoice)
@@ -348,5 +348,11 @@ public class AdminEmployeesViewModel : ViewModelBase
         ClearEdit();
         SelectedUser = null;
         StatusMessage = string.Empty;
+    }
+
+    public void RefreshOnNavigate()
+    {
+        Reset();
+        Refresh();
     }
 }

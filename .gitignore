@@ -1,8 +1,9 @@
-# Build
-bin/
-obj/
+# Build (kök + alt projeler; bir kez takip edilmişse: git rm -r --cached …)
+**/bin/
+**/obj/
 [Bb]uild/
 [Oo]ut/
+Publish/
 
 # Visual Studio
 .vs/

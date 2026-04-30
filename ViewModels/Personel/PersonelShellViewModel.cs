@@ -66,7 +66,7 @@ public class PersonelShellViewModel : ViewModelBase
 
     private void NavigateTo(ViewModelBase page)
     {
-        SetProperty(ref _currentPage, page);
+        SetProperty(ref _currentPage, page, nameof(CurrentPage));
         PageTitle = page is PersonelDashboardViewModel ? "Dashboard"
             : page is PersonelAddWorkViewModel ? "İş Kaydı Gir"
             : page is PersonelHistoryViewModel ? "Geçmiş"

@@ -68,7 +68,8 @@ public class AdminShellViewModel : ViewModelBase
 
     private void NavigateTo(ViewModelBase page)
     {
-        SetProperty(ref _currentPage, page);
+        // CallerMemberName burada NavigateTo olurdu; bağlama doğru bildirimi için adı veriyoruz.
+        SetProperty(ref _currentPage, page, nameof(CurrentPage));
         PageTitle = page is AdminDashboardViewModel ? "Dashboard"
             : page is AdminEmployeesViewModel ? "Çalışanlar"
             : page is AdminJobsViewModel ? "İş Ekleme"

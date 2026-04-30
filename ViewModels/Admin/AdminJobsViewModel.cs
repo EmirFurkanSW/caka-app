@@ -166,8 +166,17 @@ public class AdminJobsViewModel : ViewModelBase
         for (var i = 0; i < EditStages.Count; i++)
         {
             var s = EditStages[i];
-            StagePickList.Add(new StagePickItem { Index = i, Label = $"{i + 1}. {s.ResolvedName}" });
+            StagePickList.Add(new StagePickItem { Index = i, Label = FormatPlanStagePickLabel(s.StageNumber, s.Description, s.ResolvedName) });
         }
+    }
+
+    /// <summary>Plan açılır listesi: «1. Stage 1 - açıklama» veya açıklama yoksa «1. Stage 1».</summary>
+    private static string FormatPlanStagePickLabel(int stageNumber, string? stageDescription, string resolvedNameFallback)
+    {
+        var desc = (stageDescription ?? "").Trim();
+        if (string.IsNullOrEmpty(desc))
+            return $"{stageNumber}. {resolvedNameFallback}";
+        return $"{stageNumber}. Stage {stageNumber} - {desc}";
     }
 
     private void ClearEditors()

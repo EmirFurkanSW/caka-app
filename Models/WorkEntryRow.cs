@@ -71,7 +71,12 @@ public class WorkEntryRow : INotifyPropertyChanged
         if (detail?.Stages is { Count: > 0 } stages)
         {
             foreach (var s in stages.OrderBy(x => x.SortOrder))
-                StageOptions.Add(new JobStagePickItem { StageId = s.Id, Label = s.Name });
+            {
+                var name = string.IsNullOrWhiteSpace(s.Name) ? $"Stage {s.SortOrder + 1}" : s.Name.Trim();
+                var desc = (s.Description ?? "").Trim();
+                var label = string.IsNullOrEmpty(desc) ? name : $"{name} - {desc}";
+                StageOptions.Add(new JobStagePickItem { StageId = s.Id, Label = label });
+            }
         }
         OnPropertyChanged(nameof(HasStageChoices));
     }

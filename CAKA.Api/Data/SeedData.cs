@@ -24,7 +24,17 @@ public static class SeedData
             await db.JobStages.ExecuteDeleteAsync();
             await db.JobParticipants.ExecuteDeleteAsync();
             await db.Jobs.ExecuteDeleteAsync();
-            await db.Users.Where(u => u.UserName != AdminUserName).ExecuteDeleteAsync();
+
+            // Ortam/collation bağımlılığı nedeniyle büyük/küçük harf ve boşluktan muaf güvenilir silme
+            var remainingUserNames =
+                await db.Users.AsNoTracking().Select(u => u.UserName).ToListAsync();
+            foreach (var uname in remainingUserNames)
+            {
+                if (string.Equals(uname, AdminUserName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                await db.Users.Where(u => u.UserName == uname).ExecuteDeleteAsync();
+            }
+
             await tx.CommitAsync();
         }
         catch

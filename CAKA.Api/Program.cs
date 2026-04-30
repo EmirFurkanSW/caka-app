@@ -99,6 +99,18 @@ using (var scope = app.Services.CreateScope())
     DbSchemaUpdater.EnsureJobParticipantCurrencyColumn(db);
     DbSchemaUpdater.EnsureWorkLogJobStageIdColumn(db);
     DbSchemaUpdater.EnsureUserHourlyRateColumn(db);
+
+    var factoryReset = Environment.GetEnvironmentVariable("CAKA_FACTORY_RESET");
+    if (!string.IsNullOrWhiteSpace(factoryReset) &&
+        (factoryReset.Trim() == "1" ||
+         factoryReset.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+         factoryReset.Equals("yes", StringComparison.OrdinalIgnoreCase)))
+    {
+        await SeedData.WipeAllUserGeneratedDataKeepingAdminAsync(db);
+        Console.WriteLine(
+            $"[{DateTime.UtcNow:u}] CAKA_FACTORY_RESET: Tüm kullanıcı verileri silindi (yalnızca kullanıcı adı '{SeedData.AdminUserName}' korunur). Ortam değişkenini kaldırıp yeniden yayınlamayı unutmayın.");
+    }
+
     await SeedData.EnsureAdminAsync(db);
 }
 

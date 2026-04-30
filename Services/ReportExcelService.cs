@@ -41,31 +41,45 @@ public class ReportExcelService : IReportExcelService
     public void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
         IReadOnlyList<WorkLog> entries,
         IReadOnlyDictionary<string, string> userNameToDisplayName,
-        JobDetail? jobDetail = null)
+        JobDetail? jobDetail = null,
+        IReadOnlyList<string>? columnUserNames = null,
+        Guid? explicitJobId = null)
     {
         using var wb = new XLWorkbook();
         var periodStart = entries.Count > 0 ? entries.Min(x => x.Date).Date : DateTime.Today;
         var periodEnd = entries.Count > 0 ? entries.Max(x => x.Date).Date : DateTime.Today;
 
+        var jobLogs = entries.ToList();
+        var jobIdResolved = explicitJobId
+            ?? jobDetail?.Id
+            ?? jobLogs.Select(e => e.JobId).FirstOrDefault(j => j.HasValue)
+            ?? Guid.Empty;
+
+        var usersPre = ResolveColumnUsernames(columnUserNames, userNameToDisplayName, jobLogs);
+        var lastColTitle = Math.Max(8, usersPre.Count + 2);
+
         var ws = wb.Worksheets.Add("Maliyet ve aşama");
         ws.Cell(1, 1).Value = "İş maliyeti ve aşama dağılımı";
-        StyleTitleMerge(ws.Range(1, 1, 1, 8));
+        StyleTitleMerge(ws.Range(1, 1, 1, lastColTitle));
 
         ws.Cell(2, 1).Value = $"{jobCode} — {jobDescription}";
-        ws.Range(2, 1, 2, 8).Merge().Style.Fill.BackgroundColor = CardBg;
+        ws.Range(2, 1, 2, lastColTitle).Merge().Style.Fill.BackgroundColor = CardBg;
 
         ws.Cell(3, 1).Value =
             $"Kayıtların tarih aralığı: {periodStart:dd.MM.yyyy} – {periodEnd:dd.MM.yyyy}";
-        ws.Range(3, 1, 3, 8).Merge();
+        ws.Range(3, 1, 3, lastColTitle).Merge();
 
         var lookups = BuildLookupsFromJobDetail(jobDetail, jobCode, jobDescription);
+
         var r = 5;
-        FillJobMatricesForLogs(ws, ref r, lookups, entries, userNameToDisplayName, null);
+        FillJobLandscapePerformanceSheet(ws, ref r, lookups, jobIdResolved, jobLogs,
+            userNameToDisplayName, columnUserNames);
 
         var noteRow = r + 1;
         ws.Cell(noteRow, 1).Value =
-            "Not: Kontenjan ve genel gider çarpanları ×1,05. İndirim hücresi düzenlenebilir. Farklı para birimleri aynı toplam satırında birleştirilir; oran olarak yorumlamayın.";
-        ws.Range(noteRow, 1, noteRow, 8).Merge().Style.Font.Italic = true;
+            "Not: Kontenjan ve genel gider sırasıyla %5 (×1,05); ‘Discount Amount’ ve ‘Grand Total / First Offer’ satırı düzenlenebilir. Farklı para birimleri aynı toplamdaki sayılarca toplanmıştır.";
+        ws.Range(noteRow, 1, noteRow, lastColTitle).Merge().Style.Font.Italic = true;
+        ws.Range(noteRow, 1, noteRow, lastColTitle).Style.Font.FontColor = XLColor.FromHtml("#5A6978");
 
         ws.Columns().AdjustToContents();
 
@@ -73,6 +87,293 @@ public class ReportExcelService : IReportExcelService
             AppendJobDefinitionWorksheet(wb, jobDetail, jobCode, jobDescription);
 
         wb.SaveAs(filePath);
+    }
+
+    /// <summary>İş bazlı profesyonel layout: çalışanlar sütununda, Stage tablosu, Grand Total / İndirim / First Offer.</summary>
+    private static void FillJobLandscapePerformanceSheet(IXLWorksheet ws, ref int startRow,
+        WeekExcelLookups lookups, Guid jobId, List<WorkLog> jobLogs,
+        IReadOnlyDictionary<string, string> display,
+        IReadOnlyList<string>? columnUserPreset)
+    {
+        var userCols = ResolveColumnUsernames(columnUserPreset, display, jobLogs);
+        lookups.JobDetails.TryGetValue(jobId, out var detail);
+        var (code, jdesc) = lookups.ResolveJob(jobId);
+
+        if (userCols.Count == 0)
+        {
+            ws.Cell(startRow, 1).Value = "Sütunda gösterilecek kullanıcı yok (Çalışanlar listesi boş).";
+            startRow += 3;
+            return;
+        }
+
+        var lastCol = userCols.Count + 2;
+
+        ws.Cell(startRow, 1).Value = $"{code} — {jdesc}".Trim().TrimEnd('—', ' ');
+        ws.Range(startRow, 1, startRow, lastCol).Merge();
+        ws.Row(startRow).Style.Font.Bold = true;
+        ws.Row(startRow).Style.Font.FontSize = 13;
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "";
+        for (var i = 0; i < userCols.Count; i++)
+            ws.Cell(startRow, i + 2).Value = display.GetValueOrDefault(userCols[i], userCols[i]);
+
+        ws.Cell(startRow, lastCol).Value = "Toplam";
+        StyleHeader(ws.Range(startRow, 1, startRow, lastCol));
+        var headerExcelRow = startRow;
+        startRow++;
+
+        var matrixTopRow = startRow;
+
+        ws.Cell(startRow, 1).Value = "Saatlik ücret (iş tanımı)";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            if (jobId == Guid.Empty)
+            {
+                ws.Cell(startRow, i + 2).Value = "—";
+                continue;
+            }
+
+            var rate = lookups.ParticipantHourly(userCols[i], jobId, out var usd);
+            var cell = ws.Cell(startRow, i + 2);
+            if (rate.HasValue)
+            {
+                cell.Value = (double)rate.Value;
+                cell.Style.NumberFormat.Format = usd ? "$#,##0.00" : "#,##0.00 \"₺\"";
+            }
+            else
+                cell.Value = 0;
+
+            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(startRow, lastCol).Clear();
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Mandayı sayısı (saat÷8)";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
+            ws.Cell(startRow, i + 2).Value = (double)(h / 8m);
+            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
+            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Toplam saat";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
+            ws.Cell(startRow, i + 2).Value = (double)h;
+            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
+            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Toplam maliyet";
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var hrs = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
+            decimal? rateOpt = null;
+            var isUsd = false;
+            if (jobId != Guid.Empty)
+                rateOpt = lookups.ParticipantHourly(userCols[i], jobId, out isUsd);
+
+            var cell = ws.Cell(startRow, i + 2);
+            if (rateOpt.HasValue)
+            {
+                cell.Value = (double)(hrs * rateOpt.Value);
+                cell.Style.NumberFormat.Format = isUsd ? "$#,##0.00" : "#,##0.00 \"₺\"";
+            }
+            else
+                cell.Value = 0d;
+
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(startRow, lastCol).FormulaA1 =
+            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "#,##0.00";
+        startRow++;
+
+        ws.Row(startRow).Height = 8;
+        startRow++;
+
+        var stageList = OrderedStagesForJobPerformance(detail, jobLogs);
+        if (stageList.Count == 0 && detail?.Stages is { Count: > 0 })
+            stageList.AddRange(detail.Stages.OrderBy(s => s.SortOrder).Select(s => s.Id));
+
+        foreach (var sid in stageList)
+        {
+            var lbl = sid == Guid.Empty ? "General / none" : lookups.ResolveStage(jobId, sid);
+            ws.Cell(startRow, 1).Value = lbl;
+            ws.Row(startRow).Style.Font.Bold = false;
+            for (var i = 0; i < userCols.Count; i++)
+            {
+                var h = sid == Guid.Empty
+                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage)
+                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid);
+                ws.Cell(startRow, i + 2).Value = (double)h;
+                ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
+                ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+                if ((startRow - matrixTopRow) % 2 == 1)
+                    ws.Cell(startRow, i + 2).Style.Fill.BackgroundColor = StripSub;
+            }
+
+            ws.Cell(startRow, lastCol).FormulaA1 =
+                $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
+            ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
+            if ((startRow - matrixTopRow) % 2 == 1)
+                ws.Cell(startRow, lastCol).Style.Fill.BackgroundColor = StripSub;
+
+            startRow++;
+        }
+
+        BorderRange(ws.Range(matrixTopRow - 1, 1, startRow - 1, lastCol));
+        ws.SheetView.FreezeRows(headerExcelRow);
+
+        startRow++;
+
+        ws.Cell(startRow, 1).Value = "Stage and Description";
+        ws.Range(startRow, 1, startRow, 5).Style.Font.Bold = true;
+        ws.Range(startRow, 1, startRow, 5).Style.Fill.BackgroundColor = XLColor.FromHtml("#5A5A5A");
+        ws.Range(startRow, 1, startRow, 5).Style.Font.FontColor = XLColor.White;
+        ws.Cell(startRow, 2).Value = "Total";
+        ws.Cell(startRow, 3).Value = "Total Hours";
+        ws.Cell(startRow, 4).Value = "Price With Contingency (5%)";
+        ws.Cell(startRow, 5).Value = "Price With G&A Cost (5%)";
+        BorderRange(ws.Range(startRow, 1, startRow, 5));
+        var summaryHeaderExcelRow = startRow;
+        startRow++;
+
+        var summaryFirstDataRow = startRow;
+
+        if (stageList.Count == 0)
+        {
+            ws.Cell(startRow, 1).Value = "— Tanımlı aşama yok —";
+            ws.Cell(startRow, 2).Value = 0d;
+            ws.Cell(startRow, 3).Value = 0d;
+            ws.Cell(startRow, 4).Value = 0d;
+            ws.Cell(startRow, 5).Value = 0d;
+            startRow++;
+        }
+        else
+        {
+            foreach (var sid in stageList)
+            {
+                var lbl = sid == Guid.Empty ? "General / none" : lookups.ResolveStage(jobId, sid);
+                decimal raw = 0;
+                decimal hrs = 0;
+                foreach (var u in userCols)
+                {
+                    var uh = sid == Guid.Empty
+                        ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage)
+                        : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid);
+                    hrs += uh;
+                    var rateOpt = jobId == Guid.Empty ? null : lookups.ParticipantHourly(u, jobId, out _);
+                    if (rateOpt.HasValue)
+                        raw += uh * rateOpt.Value;
+                }
+
+                var cont = raw * (decimal)KontenjanCarpani;
+                var ga = cont * (decimal)GenelGiderCarpani;
+
+                ws.Cell(startRow, 1).Value = lbl;
+                ws.Cell(startRow, 2).Value = (double)raw;
+                ws.Cell(startRow, 3).Value = (double)hrs;
+                ws.Cell(startRow, 4).Value = (double)cont;
+                ws.Cell(startRow, 5).Value = (double)ga;
+                for (var c = 2; c <= 5; c++)
+                    ws.Cell(startRow, c).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(startRow, 3).Style.NumberFormat.Format = "0.0";
+                startRow++;
+            }
+        }
+
+        var summaryLastDataRow = startRow - 1;
+        BorderRange(ws.Range(summaryHeaderExcelRow, 1, summaryLastDataRow, 5));
+
+        startRow += 2;
+
+        var grandHdrRow = startRow;
+        ws.Cell(grandHdrRow, 1).Value = "Grand Total";
+        ws.Cell(grandHdrRow, 2).Value = "Discount Amount";
+        ws.Cell(grandHdrRow, 3).Value = "First Offer";
+        var hdrFooter = ws.Range(grandHdrRow, 1, grandHdrRow, 3);
+        hdrFooter.Style.Font.Bold = true;
+        hdrFooter.Style.Fill.BackgroundColor = XLColor.FromHtml("#D9D9D9");
+        hdrFooter.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        BorderRange(hdrFooter);
+
+        var grandValRow = startRow + 1;
+        ws.Cell(grandValRow, 1).FormulaA1 = $"SUM(E{summaryFirstDataRow}:E{summaryLastDataRow})";
+        ws.Cell(grandValRow, 2).Value = 0d;
+        ws.Cell(grandValRow, 3).FormulaA1 = $"{ColLetter(1)}{grandValRow}-{ColLetter(2)}{grandValRow}";
+        for (var c = 1; c <= 3; c++)
+        {
+            ws.Cell(grandValRow, c).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(grandValRow, c).Style.Font.FontColor = XLColor.FromHtml("#0563C1");
+            ws.Cell(grandValRow, c).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        BorderRange(ws.Range(grandHdrRow, 1, grandValRow, 3));
+        startRow = grandValRow + 2;
+    }
+
+    private static List<string> ResolveColumnUsernames(
+        IReadOnlyList<string>? presetOrdered,
+        IReadOnlyDictionary<string, string> display,
+        List<WorkLog> jobLogs)
+    {
+        if (presetOrdered is { Count: > 0 })
+        {
+            return presetOrdered
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        return jobLogs
+            .Where(l => !string.IsNullOrWhiteSpace(l.UserName))
+            .Select(l => l.UserName!.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>İş tanımındaki tüm aşamalar + kayıtlarda geçen ek aşamalar + (varsa) genel satırı.</summary>
+    private static List<Guid> OrderedStagesForJobPerformance(JobDetail? detail, List<WorkLog> jobLogs)
+    {
+        var ordered = new List<Guid>();
+        var hasGeneral = jobLogs.Any(l => l.JobStageId == null || l.JobStageId == Guid.Empty);
+
+        if (hasGeneral)
+            ordered.Add(Guid.Empty);
+
+        if (detail?.Stages is { Count: > 0 })
+        {
+            foreach (var s in detail.Stages.OrderBy(x => x.SortOrder))
+                if (!ordered.Contains(s.Id))
+                    ordered.Add(s.Id);
+        }
+
+        foreach (var id in jobLogs
+                     .Where(l => l.JobStageId.HasValue && l.JobStageId != Guid.Empty)
+                     .Select(l => l.JobStageId!.Value)
+                     .Distinct())
+            if (!ordered.Contains(id))
+                ordered.Add(id);
+
+        return ordered;
     }
 
     private enum HourFilter { All, UnassignedStage, ExactStage }

@@ -255,13 +255,15 @@ public class AdminReportsViewModel : ViewModelBase, INavigationRefresh
             .Where(l => l.JobId == job.Id)
             .ToList();
 
-        if (jobLogs.Count == 0)
-        {
-            MessageBox.Show("Seçilen iş için henüz çalışma kaydı yok.", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-
         var userNameToDisplay = _userStore.GetAll().ToDictionary(u => u.UserName, u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName);
+
+        var allColumnUsers = _userStore.GetAll()
+            .Where(u => !string.IsNullOrWhiteSpace(u.UserName))
+            .OrderBy(u => string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName.Trim(), StringComparer.OrdinalIgnoreCase)
+            .ThenBy(u => u.UserName, StringComparer.OrdinalIgnoreCase)
+            .Select(u => u.UserName.Trim())
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
 
         var suggestedName = SanitizeFileName($"{job.Code} - {job.Description}.xlsx");
         var dlg = new Microsoft.Win32.SaveFileDialog
@@ -288,7 +290,9 @@ public class AdminReportsViewModel : ViewModelBase, INavigationRefresh
             job.Description,
             jobLogs,
             userNameToDisplay,
-            jobDetail);
+            jobDetail,
+            allColumnUsers,
+            job.Id);
         MessageBox.Show($"Excel dosyası kaydedildi.\n\n{dlg.FileName}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 

@@ -12,9 +12,14 @@ public interface IReportExcelService
         IReadOnlyDictionary<string, string> userNameToDisplayName,
         WeekExcelLookups? lookups = null);
 
-    /// <summary>Seçilen iş için çalışan bazlı performans raporu. İsteğe bağlı <paramref name="jobDetail"/> ile aşama/plan/ücret bilgisi ikinci sayfada ve saatlik ücrette otomatik doldurulur.</summary>
+    /// <summary>
+    /// Seçilen iş için maliyet matrisi. <paramref name="columnUserNames"/> dolu ise sütunlar bu sırayla (ör. sistemdeki tüm çalışanlar);
+    /// boşsa yalnızca kaydı olan kullanıcılar listelenir. Kayıtsız ihracatta iş kimliği için <paramref name="explicitJobId"/> verin.
+    /// </summary>
     void GenerateJobPerformanceReport(string filePath, string jobCode, string jobDescription,
         IReadOnlyList<WorkLog> entries,
         IReadOnlyDictionary<string, string> userNameToDisplayName,
-        JobDetail? jobDetail = null);
+        JobDetail? jobDetail = null,
+        IReadOnlyList<string>? columnUserNames = null,
+        Guid? explicitJobId = null);
 }

@@ -57,6 +57,12 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
     private DateTime _personnelFilterTo;
     private DateTime _jobFilterFrom;
     private DateTime _jobFilterTo;
+    private string _personnelFilterSummary = "";
+    private string _jobFilterSummary = "";
+
+    public const string PersonnelChartTitle = "Personel Çalışma Saatleri";
+    public const string JobChartTitle = "İş Bazında Çalışma Saatleri";
+    public const string PeriodTotalHoursLabel = "Seçili dönem toplam saat";
 
     public int TotalEmployees
     {
@@ -64,7 +70,6 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
         private set => SetProperty(ref _totalEmployees, value);
     }
 
-    /// <summary>Personel grafiği tarih aralığındaki toplam saat.</summary>
     public decimal PeriodTotalHours
     {
         get => _periodTotalHours;
@@ -101,14 +106,17 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
         set => SetProperty(ref _jobFilterTo, value.Date);
     }
 
-    public string PersonnelChartTitle =>
-        $"Personel Çalışma Saatleri ({PersonnelFilterFrom:dd.MM.yyyy} – {PersonnelFilterTo:dd.MM.yyyy})";
+    public string PersonnelFilterSummary
+    {
+        get => _personnelFilterSummary;
+        private set => SetProperty(ref _personnelFilterSummary, value);
+    }
 
-    public string JobChartTitle =>
-        $"İş Bazında Çalışma Saatleri ({JobFilterFrom:dd.MM.yyyy} – {JobFilterTo:dd.MM.yyyy})";
-
-    public string PeriodTotalHoursLabel =>
-        $"Toplam Saat ({PersonnelFilterFrom:dd.MM.yyyy} – {PersonnelFilterTo:dd.MM.yyyy})";
+    public string JobFilterSummary
+    {
+        get => _jobFilterSummary;
+        private set => SetProperty(ref _jobFilterSummary, value);
+    }
 
     public ObservableCollection<ChartBarItem> ChartData { get; }
     public ObservableCollection<ChartBarItem> JobChartData { get; }
@@ -122,6 +130,10 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
     public void RefreshAsync()
     {
         var dispatcher = Application.Current.Dispatcher;
+        var pFrom = PersonnelFilterFrom;
+        var pTo = PersonnelFilterTo;
+        var jFrom = JobFilterFrom;
+        var jTo = JobFilterTo;
         IsLoading = true;
 
         _ = System.Threading.Tasks.Task.Run(() =>
@@ -130,7 +142,9 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
             {
                 var users = _userStore.GetAll();
                 var totalEmployees = users.Count;
-                var activities = _workLogService.GetAll()
+                var allLogs = _workLogService.GetAll();
+
+                var activities = allLogs
                     .OrderByDescending(w => w.CreatedAt)
                     .Take(50)
                     .Select(log =>
@@ -147,12 +161,12 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
                     })
                     .ToList();
 
-                var (pFrom, pTo) = NormalizeRange(PersonnelFilterFrom, PersonnelFilterTo);
-                var personnelChart = BuildPersonnelChart(users, pFrom, pTo);
-                var periodTotal = _workLogService.GetTotalHoursAll(pFrom, pTo);
+                var (pFromN, pToN) = NormalizeRange(pFrom, pTo);
+                var personnelChart = BuildPersonnelChart(users, pFromN, pToN, allLogs);
+                var periodTotal = FilterLogs(allLogs, pFromN, pToN).Sum(l => l.Hours);
 
-                var (jFrom, jTo) = NormalizeRange(JobFilterFrom, JobFilterTo);
-                var jobChart = BuildJobChart(jFrom, jTo);
+                var (jFromN, jToN) = NormalizeRange(jFrom, jTo);
+                var jobChart = BuildJobChart(jFromN, jToN, allLogs);
 
                 dispatcher.InvokeAsync(() =>
                 {
@@ -167,9 +181,8 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
                     RecentActivities.Clear();
                     foreach (var item in activities)
                         RecentActivities.Add(item);
-                    OnPropertyChanged(nameof(PersonnelChartTitle));
-                    OnPropertyChanged(nameof(JobChartTitle));
-                    OnPropertyChanged(nameof(PeriodTotalHoursLabel));
+                    PersonnelFilterSummary = FormatRangeSummary(pFromN, pToN);
+                    JobFilterSummary = FormatRangeSummary(jFromN, jToN);
                 }, DispatcherPriority.Normal);
             }
             catch
@@ -193,15 +206,18 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
     private void RefreshPersonnelChartAsync()
     {
         var dispatcher = Application.Current.Dispatcher;
-        var (from, to) = NormalizeRange(PersonnelFilterFrom, PersonnelFilterTo);
+        var from = PersonnelFilterFrom;
+        var to = PersonnelFilterTo;
+        var (fromNorm, toNorm) = NormalizeRange(from, to);
 
         _ = System.Threading.Tasks.Task.Run(() =>
         {
             try
             {
                 var users = _userStore.GetAll();
-                var chartItems = BuildPersonnelChart(users, from, to);
-                var total = _workLogService.GetTotalHoursAll(from, to);
+                var allLogs = _workLogService.GetAll();
+                var chartItems = BuildPersonnelChart(users, fromNorm, toNorm, allLogs);
+                var total = FilterLogs(allLogs, fromNorm, toNorm).Sum(l => l.Hours);
 
                 dispatcher.InvokeAsync(() =>
                 {
@@ -209,13 +225,14 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
                     ChartData.Clear();
                     foreach (var item in chartItems)
                         ChartData.Add(item);
-                    OnPropertyChanged(nameof(PersonnelChartTitle));
-                    OnPropertyChanged(nameof(PeriodTotalHoursLabel));
+                    PersonnelFilterSummary = FormatRangeSummary(fromNorm, toNorm);
                 }, DispatcherPriority.Normal);
             }
-            catch
+            catch (Exception ex)
             {
-                dispatcher.InvokeAsync(() => ChartData.Clear(), DispatcherPriority.Normal);
+                dispatcher.InvokeAsync(() =>
+                    MessageBox.Show(ex.Message, "Personel grafiği yüklenemedi", MessageBoxButton.OK,
+                        MessageBoxImage.Warning), DispatcherPriority.Normal);
             }
         });
     }
@@ -223,39 +240,62 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
     private void RefreshJobChartAsync()
     {
         var dispatcher = Application.Current.Dispatcher;
-        var (from, to) = NormalizeRange(JobFilterFrom, JobFilterTo);
+        var from = JobFilterFrom;
+        var to = JobFilterTo;
+        var (fromNorm, toNorm) = NormalizeRange(from, to);
 
         _ = System.Threading.Tasks.Task.Run(() =>
         {
             try
             {
-                var chartItems = BuildJobChart(from, to);
+                var allLogs = _workLogService.GetAll();
+                var chartItems = BuildJobChart(fromNorm, toNorm, allLogs);
                 dispatcher.InvokeAsync(() =>
                 {
                     JobChartData.Clear();
                     foreach (var item in chartItems)
                         JobChartData.Add(item);
-                    OnPropertyChanged(nameof(JobChartTitle));
+                    JobFilterSummary = FormatRangeSummary(fromNorm, toNorm);
                 }, DispatcherPriority.Normal);
             }
-            catch
+            catch (Exception ex)
             {
-                dispatcher.InvokeAsync(() => JobChartData.Clear(), DispatcherPriority.Normal);
+                dispatcher.InvokeAsync(() =>
+                    MessageBox.Show(ex.Message, "İş grafiği yüklenemedi", MessageBoxButton.OK,
+                        MessageBoxImage.Warning), DispatcherPriority.Normal);
             }
         });
     }
 
-    private List<ChartBarItem> BuildPersonnelChart(IReadOnlyList<StoredUser> users, DateTime from, DateTime to) =>
-        users
-            .OrderByDescending(u => _workLogService.GetTotalHoursForUser(u.UserName, from, to))
-            .Select(u => new ChartBarItem
-            {
-                Label = string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName,
-                Value = (double)_workLogService.GetTotalHoursForUser(u.UserName, from, to)
-            })
-            .ToList();
+    private static List<WorkLog> FilterLogs(IReadOnlyList<WorkLog> allLogs, DateTime from, DateTime to) =>
+        allLogs.Where(l =>
+        {
+            var d = l.Date.Date;
+            return d >= from && d <= to;
+        }).ToList();
 
-    private List<ChartBarItem> BuildJobChart(DateTime from, DateTime to)
+    private static List<ChartBarItem> BuildPersonnelChart(
+        IReadOnlyList<StoredUser> users, DateTime from, DateTime to, IReadOnlyList<WorkLog> allLogs)
+    {
+        var logs = FilterLogs(allLogs, from, to);
+        return users
+            .Select(u =>
+            {
+                var hours = logs
+                    .Where(l => SameUser(l.UserName, u.UserName))
+                    .Sum(l => l.Hours);
+                return new ChartBarItem
+                {
+                    Label = string.IsNullOrWhiteSpace(u.DisplayName) ? u.UserName : u.DisplayName,
+                    Value = (double)hours
+                };
+            })
+            .OrderByDescending(x => x.Value)
+            .ThenBy(x => x.Label, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private List<ChartBarItem> BuildJobChart(DateTime from, DateTime to, IReadOnlyList<WorkLog> allLogs)
     {
         Dictionary<Guid, string> jobLabels;
         try
@@ -268,13 +308,8 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
             jobLabels = new Dictionary<Guid, string>();
         }
 
-        return _workLogService.GetAll()
+        return FilterLogs(allLogs, from, to)
             .Where(l => l.JobId.HasValue && l.JobId.Value != Guid.Empty)
-            .Where(l =>
-            {
-                var d = l.Date.Date;
-                return d >= from && d <= to;
-            })
             .GroupBy(l => l.JobId!.Value)
             .Select(g => new ChartBarItem
             {
@@ -285,6 +320,12 @@ public class AdminDashboardViewModel : ViewModelBase, INavigationRefresh
             .ThenBy(x => x.Label, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
+
+    private static bool SameUser(string? logUser, string colUser) =>
+        string.Equals(logUser?.Trim(), colUser, StringComparison.OrdinalIgnoreCase);
+
+    private static string FormatRangeSummary(DateTime from, DateTime to) =>
+        $"{from:dd.MM.yyyy} – {to:dd.MM.yyyy}";
 
     private static (DateTime From, DateTime To) NormalizeRange(DateTime from, DateTime to)
     {

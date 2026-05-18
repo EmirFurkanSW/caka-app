@@ -12,6 +12,9 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
     private DateTime? _selectedDate = DateTime.Today;
     private string _statusMessage = string.Empty;
     private readonly Dictionary<Guid, JobDetail?> _jobDetailCache = new();
+    private DateTime _entryMinDate;
+    private DateTime _entryMaxDate;
+    private string _allowedPeriodHint = "";
 
     public PersonelAddWorkViewModel(IAuthService authService, IWorkLogService workLogService, BackendApiClient api)
     {
@@ -20,9 +23,7 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
         _api = api;
         Entries = new ObservableCollection<WorkEntryRow>();
         Jobs = new ObservableCollection<Job>();
-        var (start, end) = GetCurrentWeekRange();
-        WeekStart = start;
-        WeekEnd = end;
+        RefreshAllowedDateRange();
         AddRowCommand = new RelayCommand(_ => AddRow());
         RemoveRowCommand = new RelayCommand(param =>
         {
@@ -35,24 +36,11 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
     }
 
     private readonly BackendApiClient _api;
-
-    /// <summary>
-    /// Haftalık periyot: Pazartesi 00:00 - Pazar 23:59 (içinde bulunulan hafta).
-    /// </summary>
-    private static (DateTime WeekStart, DateTime WeekEnd) GetCurrentWeekRange()
-    {
-        var today = DateTime.Today;
-        var daysToMonday = today.DayOfWeek == DayOfWeek.Sunday ? 6 : (int)today.DayOfWeek - 1;
-        var weekStart = today.AddDays(-daysToMonday);
-        var weekEnd = weekStart.AddDays(6);
-        return (weekStart, weekEnd);
-    }
-
     private readonly IAuthService _authService;
     private readonly IWorkLogService _workLogService;
 
-    /// <summary>Admin tarafından tanımlı aktif işler (çoktan seçmeli liste).</summary>
     public ObservableCollection<Job> Jobs { get; }
+    public ObservableCollection<WorkEntryRow> Entries { get; }
 
     public DateTime? SelectedDate
     {
@@ -60,11 +48,23 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
         set => SetProperty(ref _selectedDate, value);
     }
 
-    public DateTime WeekStart { get; }
-    public DateTime WeekEnd { get; }
-    public string WeekRangeText => $"{WeekStart:dd.MM.yyyy} - {WeekEnd:dd.MM.yyyy}";
+    public DateTime EntryMinDate
+    {
+        get => _entryMinDate;
+        private set => SetProperty(ref _entryMinDate, value);
+    }
 
-    public ObservableCollection<WorkEntryRow> Entries { get; }
+    public DateTime EntryMaxDate
+    {
+        get => _entryMaxDate;
+        private set => SetProperty(ref _entryMaxDate, value);
+    }
+
+    public string AllowedPeriodHint
+    {
+        get => _allowedPeriodHint;
+        private set => SetProperty(ref _allowedPeriodHint, value);
+    }
 
     public string StatusMessage
     {
@@ -76,8 +76,21 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
     public ICommand RemoveRowCommand { get; }
     public ICommand SaveCommand { get; }
 
+    private void RefreshAllowedDateRange()
+    {
+        var today = DateTime.Today;
+        var (min, max) = WorkLogEntryPeriod.GetSelectableDateRange(today);
+        EntryMinDate = min;
+        EntryMaxDate = max;
+        AllowedPeriodHint = WorkLogEntryPeriod.FormatAllowedPeriodHint(today);
+        if (SelectedDate < min || SelectedDate > max)
+            SelectedDate = today <= max ? today : max;
+    }
+
     private JobDetail? GetJobDetailCached(Guid jobId)
     {
+        if (WorkLogSpecialJobs.IsOfficeTrip(new Job { Id = jobId }))
+            return null;
         if (_jobDetailCache.TryGetValue(jobId, out var cached))
             return cached;
         try
@@ -96,41 +109,40 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
     private void LoadJobs()
     {
         Jobs.Clear();
+        Jobs.Add(WorkLogSpecialJobs.CreateOfficeTripJob());
         foreach (var j in _api.GetJobs(activeOnly: true))
             Jobs.Add(j);
     }
 
-    /// <summary>Sayfa her açıldığında iş listesini yenile (admin yeni iş eklemiş olabilir).</summary>
     public void Refresh()
     {
         _jobDetailCache.Clear();
+        RefreshAllowedDateRange();
         LoadJobs();
     }
 
-    /// <summary>Menüden tekrar girildiğinde formları ve satırları ilk haline döndürür.</summary>
     public void RefreshOnNavigate()
     {
         _jobDetailCache.Clear();
+        RefreshAllowedDateRange();
         LoadJobs();
         Entries.Clear();
-        SelectedDate = DateTime.Today;
+        SelectedDate = DateTime.Today <= EntryMaxDate ? DateTime.Today : EntryMaxDate;
         StatusMessage = "";
         AddRow();
     }
 
-    private void AddRow()
-    {
-        Entries.Add(new WorkEntryRow(GetJobDetailCached));
-    }
+    private void AddRow() => Entries.Add(new WorkEntryRow(GetJobDetailCached));
 
     private void SaveAll()
     {
         var date = SelectedDate ?? DateTime.Today;
         var dateOnly = date.Date;
 
-        if (dateOnly < WeekStart || dateOnly > WeekEnd)
+        if (!WorkLogEntryPeriod.CanPersonnelEnterLogForDate(dateOnly, DateTime.Today))
         {
-            StatusMessage = "Sadece bu hafta (Pazartesi–Pazar) için iş girişi yapabilirsiniz. Geçmiş veya gelecek hafta seçilemez.";
+            StatusMessage =
+                "Seçilen tarih için giriş süresi dolmuş veya gelecek hafta seçildi. Kayıtlar, ilgili haftayı izleyen Çarşamba gününe kadar girilebilir.";
             return;
         }
 
@@ -146,11 +158,14 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
 
         foreach (var row in validRows)
         {
+            if (WorkLogSpecialJobs.IsOfficeTrip(row.SelectedJob))
+                continue;
+
             var detail = GetJobDetailCached(row.SelectedJob!.Id);
             var needsStage = detail?.Stages is { Count: > 0 };
             if (needsStage == true && (row.SelectedStageId == null || row.SelectedStageId == Guid.Empty))
             {
-                StatusMessage = "Aşaması tanımlı işlerde önce işi, sonra ilgili aşamayı seçin.";
+                StatusMessage = "Aşaması tanımlı işlerde ilgili aşamayı seçin.";
                 return;
             }
         }
@@ -159,6 +174,20 @@ public class PersonelAddWorkViewModel : ViewModelBase, INavigationRefresh
         {
             foreach (var row in validRows)
             {
+                if (WorkLogSpecialJobs.IsOfficeTrip(row.SelectedJob))
+                {
+                    _workLogService.Add(new WorkLog
+                    {
+                        Date = date,
+                        JobId = null,
+                        JobStageId = null,
+                        Description = WorkLogSpecialJobs.OfficeTripDisplayText,
+                        Hours = row.Hours!.Value,
+                        UserName = _authService.CurrentUser?.UserName
+                    });
+                    continue;
+                }
+
                 var detail = GetJobDetailCached(row.SelectedJob!.Id);
                 var hasStages = detail?.Stages is { Count: > 0 };
                 _workLogService.Add(new WorkLog

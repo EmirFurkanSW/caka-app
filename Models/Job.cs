@@ -11,7 +11,9 @@ public class Job
     public bool IsActive { get; set; } = true;
 
     /// <summary>ComboBox/lista gösterim: TRCK-0064 - DemirExport</summary>
-    public string DisplayText => string.IsNullOrWhiteSpace(Description) ? Code : $"{Code} - {Description}";
+    public string DisplayText => WorkLogSpecialJobs.IsOfficeTrip(this)
+        ? WorkLogSpecialJobs.OfficeTripDisplayText
+        : string.IsNullOrWhiteSpace(Description) ? Code : $"{Code} - {Description}";
 
     /// <summary>Admin listesinde durum: Aktif / Kapatıldı</summary>
     public string StatusText => IsActive ? "Aktif" : "Kapatıldı";

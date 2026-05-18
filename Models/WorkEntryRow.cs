@@ -61,7 +61,7 @@ public class WorkEntryRow : INotifyPropertyChanged
     {
         StageOptions.Clear();
         SelectedStageId = null;
-        if (_selectedJob == null)
+        if (_selectedJob == null || WorkLogSpecialJobs.IsOfficeTrip(_selectedJob))
         {
             OnPropertyChanged(nameof(HasStageChoices));
             return;

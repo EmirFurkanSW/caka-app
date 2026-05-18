@@ -3,9 +3,9 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:admin="clr-namespace:CAKA.PerformanceApp.ViewModels.Admin"
              mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="600">
     <UserControl.Resources>
-        <!-- Sabit satır yükseklikleri: isim sarılsa bile çubuklar hizalı kalır -->
         <DataTemplate x:Key="DashboardBarColumnTemplate">
             <Grid Margin="0,0,20,0" Width="110" MinWidth="110" Height="210">
                 <Grid.RowDefinitions>
@@ -57,9 +57,12 @@
             </Border>
             <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="12,0,0,0">
                 <StackPanel>
-                    <TextBlock Text="{Binding PeriodTotalHoursLabel}" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,8"/>
+                    <TextBlock Text="{x:Static admin:AdminDashboardViewModel.PeriodTotalHoursLabel}"
+                               Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,8"/>
                     <TextBlock FontSize="32" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
                                Text="{Binding PeriodTotalHours, StringFormat={}{0:N1}}"/>
+                    <TextBlock Text="{Binding PersonnelFilterSummary}" Style="{StaticResource SubtitleTextStyle}"
+                               Margin="0,6,0,0" FontSize="12"/>
                 </StackPanel>
             </Border>
         </Grid>
@@ -67,31 +70,56 @@
         <!-- Personel grafiği -->
         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,24">
             <StackPanel>
-                <TextBlock Text="{Binding PersonnelChartTitle}" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,12"/>
-                <Grid Margin="0,0,0,16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Başlangıç" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Style="{StaticResource SubtitleTextStyle}"/>
-                    <DatePicker Grid.Column="1" SelectedDate="{Binding PersonnelFilterFrom, UpdateSourceTrigger=PropertyChanged}"
-                                Width="130" Margin="0,0,16,0"/>
-                    <TextBlock Grid.Column="2" Text="Bitiş" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Style="{StaticResource SubtitleTextStyle}"/>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left">
-                        <DatePicker SelectedDate="{Binding PersonnelFilterTo, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="130" Margin="0,0,8,0"/>
-                        <Button Content="Uygula" Command="{Binding ApplyPersonnelFilterCommand}"
-                                Padding="14,6" Margin="0,0,8,0"
-                                Background="{StaticResource AccentBrush}" Foreground="White"/>
-                        <Button Content="Bu hafta" Command="{Binding ResetPersonnelFilterCommand}"
-                                Padding="14,6" Style="{StaticResource SecondaryButtonStyle}"/>
-                    </StackPanel>
-                </Grid>
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <TextBlock Text="{x:Static admin:AdminDashboardViewModel.PersonnelChartTitle}"
+                           Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
+
+                <Border Style="{StaticResource DashboardFilterPanelStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Tarih aralığı" Style="{StaticResource DashboardFilterTitleStyle}"/>
+                                <TextBlock Text="{Binding PersonnelFilterSummary}" Style="{StaticResource DashboardFilterHintStyle}"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="Haftalık personel özeti" Style="{StaticResource DashboardFilterHintStyle}"
+                                       VerticalAlignment="Center" Opacity="0.7"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                                <TextBlock Text="BAŞLANGIÇ" Style="{StaticResource DashboardFilterLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding PersonnelFilterFrom, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource DashboardFilterDatePickerStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,20,0">
+                                <TextBlock Text="BİTİŞ" Style="{StaticResource DashboardFilterLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding PersonnelFilterTo, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource DashboardFilterDatePickerStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button Content="Uygula" Command="{Binding ApplyPersonnelFilterCommand}"
+                                        Style="{StaticResource DashboardFilterApplyButtonStyle}" Margin="0,0,10,0"/>
+                                <Button Content="Bu hafta" Command="{Binding ResetPersonnelFilterCommand}"
+                                        Style="{StaticResource DashboardFilterGhostButtonStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MinHeight="220">
                     <ItemsControl ItemsSource="{Binding ChartData}"
                                   ItemTemplate="{StaticResource DashboardBarColumnTemplate}">
                         <ItemsControl.ItemsPanel>
@@ -107,31 +135,56 @@
         <!-- İş bazlı grafik -->
         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,24">
             <StackPanel>
-                <TextBlock Text="{Binding JobChartTitle}" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,12"/>
-                <Grid Margin="0,0,0,16">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Başlangıç" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Style="{StaticResource SubtitleTextStyle}"/>
-                    <DatePicker Grid.Column="1" SelectedDate="{Binding JobFilterFrom, UpdateSourceTrigger=PropertyChanged}"
-                                Width="130" Margin="0,0,16,0"/>
-                    <TextBlock Grid.Column="2" Text="Bitiş" VerticalAlignment="Center" Margin="0,0,8,0"
-                               Style="{StaticResource SubtitleTextStyle}"/>
-                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left">
-                        <DatePicker SelectedDate="{Binding JobFilterTo, UpdateSourceTrigger=PropertyChanged}"
-                                    Width="130" Margin="0,0,8,0"/>
-                        <Button Content="Uygula" Command="{Binding ApplyJobFilterCommand}"
-                                Padding="14,6" Margin="0,0,8,0"
-                                Background="{StaticResource AccentBrush}" Foreground="White"/>
-                        <Button Content="Bu ay" Command="{Binding ResetJobFilterCommand}"
-                                Padding="14,6" Style="{StaticResource SecondaryButtonStyle}"/>
-                    </StackPanel>
-                </Grid>
-                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                <TextBlock Text="{x:Static admin:AdminDashboardViewModel.JobChartTitle}"
+                           Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
+
+                <Border Style="{StaticResource DashboardFilterPanelStyle}">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid Grid.Row="0" Margin="0,0,0,14">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Text="Tarih aralığı" Style="{StaticResource DashboardFilterTitleStyle}"/>
+                                <TextBlock Text="{Binding JobFilterSummary}" Style="{StaticResource DashboardFilterHintStyle}"
+                                           Margin="0,4,0,0"/>
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Text="İş bazında toplam saat" Style="{StaticResource DashboardFilterHintStyle}"
+                                       VerticalAlignment="Center" Opacity="0.7"/>
+                        </Grid>
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,20,0">
+                                <TextBlock Text="BAŞLANGIÇ" Style="{StaticResource DashboardFilterLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding JobFilterFrom, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource DashboardFilterDatePickerStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Margin="0,0,20,0">
+                                <TextBlock Text="BİTİŞ" Style="{StaticResource DashboardFilterLabelStyle}"/>
+                                <DatePicker SelectedDate="{Binding JobFilterTo, UpdateSourceTrigger=PropertyChanged}"
+                                            Style="{StaticResource DashboardFilterDatePickerStyle}"/>
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Bottom">
+                                <Button Content="Uygula" Command="{Binding ApplyJobFilterCommand}"
+                                        Style="{StaticResource DashboardFilterApplyButtonStyle}" Margin="0,0,10,0"/>
+                                <Button Content="Bu ay" Command="{Binding ResetJobFilterCommand}"
+                                        Style="{StaticResource DashboardFilterGhostButtonStyle}"/>
+                            </StackPanel>
+                        </Grid>
+                    </Grid>
+                </Border>
+
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" MinHeight="220">
                     <ItemsControl ItemsSource="{Binding JobChartData}"
                                   ItemTemplate="{StaticResource DashboardBarColumnTemplate}">
                         <ItemsControl.ItemsPanel>
@@ -141,8 +194,6 @@
                         </ItemsControl.ItemsPanel>
                     </ItemsControl>
                 </ScrollViewer>
-                <TextBlock Text="Varsayılan: içinde bulunulan ay. Tarih aralığını değiştirip Uygula ile iş bazında toplam saatleri görüntüleyin."
-                           Style="{StaticResource SubtitleTextStyle}" Margin="0,12,0,0" FontSize="11" Opacity="0.85"/>
             </StackPanel>
         </Border>
 

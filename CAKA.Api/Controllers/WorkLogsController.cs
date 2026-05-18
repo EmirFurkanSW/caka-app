@@ -33,11 +33,10 @@ public class WorkLogsController : ControllerBase
         return (weekStart, weekEnd);
     }
 
-    private static bool IsDateInCurrentWeek(DateTime dateUtc)
+    private static bool CanPersonnelModifyLogDate(DateTime logDateUtc)
     {
-        var (weekStart, weekEnd) = GetCurrentWeekUtc();
-        var d = dateUtc.Date;
-        return d >= weekStart && d <= weekEnd;
+        var today = DateTime.UtcNow.Date;
+        return WorkLogEntryPeriod.CanPersonnelEnterLogForDate(logDateUtc, today);
     }
 
     [HttpGet]
@@ -107,13 +106,23 @@ public class WorkLogsController : ControllerBase
             if (logDate == default) logDate = DateTime.UtcNow;
             var dateUtc = new DateTime(logDate.Year, logDate.Month, logDate.Day, 0, 0, 0, DateTimeKind.Utc);
 
-            // Personel sadece bu hafta (sunucu saati) için kayıt ekleyebilir; bilgisayar tarihi değiştirilse bile geçersiz.
-            if (!IsAdminOrYonetici && !IsDateInCurrentWeek(dateUtc))
-                return BadRequest("Sadece bu haftanın iş kayıtları eklenebilir. Geçmiş veya gelecek hafta için kayıt eklenemez.");
+            if (!IsAdminOrYonetici && !CanPersonnelModifyLogDate(dateUtc))
+                return BadRequest("Bu tarih için giriş süresi dolmuş. Her hafta için kayıtlar, o haftayı izleyen Çarşamba gününe kadar girilebilir.");
 
             string displayDescription = dto.Description ?? "";
             Guid? resolvedStageId = null;
-            if (dto.JobId.HasValue && dto.JobId.Value != Guid.Empty)
+            var isOfficeTrip = !dto.JobId.HasValue || dto.JobId.Value == Guid.Empty;
+            if (isOfficeTrip && WorkLogSpecialJobs.IsOfficeTripDescription(displayDescription))
+            {
+                if (IsAdminOrYonetici)
+                    displayDescription = WorkLogSpecialJobs.OfficeTripDescription;
+                else
+                {
+                    displayDescription = WorkLogSpecialJobs.OfficeTripDescription;
+                    resolvedStageId = null;
+                }
+            }
+            else if (dto.JobId.HasValue && dto.JobId.Value != Guid.Empty)
             {
                 var job = await _db.Jobs.FindAsync(dto.JobId.Value);
                 if (job == null || !job.IsActive)
@@ -138,13 +147,13 @@ public class WorkLogsController : ControllerBase
                 }
             }
             else if (!IsAdminOrYonetici)
-                return BadRequest("Lütfen listeden bir iş seçin.");
+                return BadRequest("Lütfen listeden bir iş veya Ofis Dışı Gezi seçin.");
 
             var entity = new WorkLogEntity
             {
                 Id = dto.Id == Guid.Empty ? Guid.NewGuid() : dto.Id,
                 Date = dateUtc,
-                JobId = dto.JobId,
+                JobId = WorkLogSpecialJobs.IsOfficeTripDescription(displayDescription) ? null : dto.JobId,
                 JobStageId = resolvedStageId,
                 Description = displayDescription,
                 Hours = dto.Hours,
@@ -180,8 +189,8 @@ public class WorkLogsController : ControllerBase
         if (!IsAdminOrYonetici && entity.UserName != CurrentUserName) return Forbid();
 
         // Personel sadece bu haftanın kayıtlarını düzenleyebilir (sunucu saati).
-        if (!IsAdminOrYonetici && !IsDateInCurrentWeek(entity.Date))
-            return BadRequest("Sadece bu haftanın iş kayıtları düzenlenebilir.");
+        if (!IsAdminOrYonetici && !CanPersonnelModifyLogDate(entity.Date))
+            return BadRequest("Bu kayıt için düzenleme süresi dolmuş.");
 
         // Takvim günü aynen korunur (timezone kayması önlenir).
         var logDate = dto.Date == default ? DateTime.UtcNow : dto.Date;
@@ -228,8 +237,8 @@ public class WorkLogsController : ControllerBase
         if (!IsAdminOrYonetici && entity.UserName != CurrentUserName) return Forbid();
 
         // Personel sadece bu haftanın kayıtlarını silebilir (sunucu saati).
-        if (!IsAdminOrYonetici && !IsDateInCurrentWeek(entity.Date))
-            return BadRequest("Sadece bu haftanın iş kayıtları silinebilir.");
+        if (!IsAdminOrYonetici && !CanPersonnelModifyLogDate(entity.Date))
+            return BadRequest("Bu kayıt için silme süresi dolmuş.");
 
         _db.WorkLogs.Remove(entity);
         await _db.SaveChangesAsync();
@@ -245,7 +254,8 @@ public class WorkLogsController : ControllerBase
         var current = CurrentUserName;
         if (string.IsNullOrEmpty(current)) return Unauthorized();
 
-        IQueryable<WorkLogEntity> query = _db.WorkLogs.Where(w => w.Date >= from && w.Date <= to);
+        var (fromUtc, toUtc) = NormalizeTotalsDateRange(from, to);
+        IQueryable<WorkLogEntity> query = _db.WorkLogs.Where(w => w.Date >= fromUtc && w.Date <= toUtc);
         if (!IsAdminOrYonetici || string.IsNullOrEmpty(userName))
             query = query.Where(w => w.UserName == current);
         else
@@ -259,9 +269,22 @@ public class WorkLogsController : ControllerBase
     [Authorize(Policy = "AdminOrYonetici")]
     public async Task<ActionResult<object>> GetTotalsAll([FromQuery] DateTime from, [FromQuery] DateTime to)
     {
+        var (fromUtc, toUtc) = NormalizeTotalsDateRange(from, to);
         var total = await _db.WorkLogs
-            .Where(w => w.Date >= from && w.Date <= to)
+            .Where(w => w.Date >= fromUtc && w.Date <= toUtc)
             .SumAsync(w => w.Hours);
         return Ok(new { TotalHours = total });
+    }
+
+    /// <summary>Takvim günü karşılaştırması; timezone kayması olmadan aralık dahil.</summary>
+    private static (DateTime FromUtc, DateTime ToUtc) NormalizeTotalsDateRange(DateTime from, DateTime to)
+    {
+        var f = from.Date;
+        var t = to.Date;
+        if (f > t)
+            (f, t) = (t, f);
+        var fromUtc = new DateTime(f.Year, f.Month, f.Day, 0, 0, 0, DateTimeKind.Utc);
+        var toUtc = new DateTime(t.Year, t.Month, t.Day, 0, 0, 0, DateTimeKind.Utc);
+        return (fromUtc, toUtc);
     }
 }

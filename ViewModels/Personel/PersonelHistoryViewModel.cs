@@ -76,14 +76,13 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
             .ToList();
 
         var today = DateTime.Today;
-        var currentWeekStart = GetMonday(today);
 
         foreach (var group in byWeek)
         {
             var weekStart = group.Key;
             var weekEnd = weekStart.AddDays(6);
-            var isCurrentWeek = (weekStart == currentWeekStart);
-            var wg = new WeekWorkLogGroup { WeekStart = weekStart, WeekEnd = weekEnd, IsCurrentWeek = isCurrentWeek };
+            var isEditable = WorkLogEntryPeriod.IsWeekEditable(weekStart, today);
+            var wg = new WeekWorkLogGroup { WeekStart = weekStart, WeekEnd = weekEnd, IsCurrentWeek = isEditable };
             foreach (var log in group.OrderBy(l => l.Date).ThenBy(l => l.CreatedAt))
                 wg.Entries.Add(log);
             WeekGroups.Add(wg);
@@ -92,9 +91,9 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
 
     private void DeleteEntry(WorkLog log)
     {
-        var currentWeekGroup = WeekGroups.FirstOrDefault(g => g.IsCurrentWeek);
-        if (currentWeekGroup == null) return;
-        var found = currentWeekGroup.Entries.FirstOrDefault(e => e.Id == log.Id);
+        var editableGroup = WeekGroups.FirstOrDefault(g => g.IsCurrentWeek && g.Entries.Any(e => e.Id == log.Id));
+        if (editableGroup == null) return;
+        var found = editableGroup.Entries.FirstOrDefault(e => e.Id == log.Id);
         if (found == null) return;
 
         var confirm = MessageBox.Show(
@@ -108,7 +107,7 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
         try
         {
             _workLogService.Delete(log.Id);
-            currentWeekGroup.Entries.Remove(found);
+            editableGroup.Entries.Remove(found);
         }
         catch (Exception ex)
         {

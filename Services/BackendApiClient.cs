@@ -495,7 +495,8 @@ public class BackendApiClient
 
     public decimal GetTotalHoursForUser(string? userName, DateTime from, DateTime to)
     {
-        var url = "api/worklogs/totals?from=" + Uri.EscapeDataString(from.ToString("O")) + "&to=" + Uri.EscapeDataString(to.ToString("O"));
+        var url = "api/worklogs/totals?from=" + Uri.EscapeDataString(from.ToString("yyyy-MM-dd"))
+                  + "&to=" + Uri.EscapeDataString(to.ToString("yyyy-MM-dd"));
         if (!string.IsNullOrEmpty(userName))
             url += "&userName=" + Uri.EscapeDataString(userName);
         var v = CallAsync(async () =>
@@ -512,7 +513,8 @@ public class BackendApiClient
 
     public decimal GetTotalHoursAll(DateTime from, DateTime to)
     {
-        var url = "api/worklogs/totals-all?from=" + Uri.EscapeDataString(from.ToString("O")) + "&to=" + Uri.EscapeDataString(to.ToString("O"));
+        var url = "api/worklogs/totals-all?from=" + Uri.EscapeDataString(from.ToString("yyyy-MM-dd"))
+                  + "&to=" + Uri.EscapeDataString(to.ToString("yyyy-MM-dd"));
         var v = CallAsync(async () =>
         {
             SetBearer();

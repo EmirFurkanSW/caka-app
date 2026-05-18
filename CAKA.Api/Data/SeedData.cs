@@ -42,6 +42,36 @@ public static class SeedData
             await tx.RollbackAsync();
             throw;
         }
+
+        await ResetAdminToDefaultAsync(db);
+    }
+
+    /// <summary>Admin hesabını varsayılan giriş bilgilerine döndürür (yoksa oluşturur).</summary>
+    public static async Task ResetAdminToDefaultAsync(AppDbContext db)
+    {
+        var admin = await db.Users.FirstOrDefaultAsync(u => u.UserName == AdminUserName);
+        var hash = BCrypt.Net.BCrypt.HashPassword(DefaultAdminPassword);
+        if (admin != null)
+        {
+            admin.PasswordHash = hash;
+            admin.DisplayName = "Yönetici";
+            admin.Department = "";
+            admin.IsSuspended = false;
+            admin.Role = "Admin";
+            await db.SaveChangesAsync();
+            return;
+        }
+
+        db.Users.Add(new UserEntity
+        {
+            UserName = AdminUserName,
+            PasswordHash = hash,
+            DisplayName = "Yönetici",
+            Department = "",
+            IsSuspended = false,
+            Role = "Admin"
+        });
+        await db.SaveChangesAsync();
     }
 
     public static async Task EnsureAdminAsync(AppDbContext db)

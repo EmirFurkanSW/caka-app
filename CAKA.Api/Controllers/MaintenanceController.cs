@@ -62,7 +62,7 @@ public sealed class MaintenanceController : ControllerBase
             ok = true,
             keptAdminLogin = SeedData.AdminUserName,
             message =
-                $"Tamamlandı. Yalnızca kullanıcı adı '{SeedData.AdminUserName}' kullanılabilir. Varsayılan şifreyi daha önce değiştirmediyseniz 1234 olabilir.",
+                $"Tamamlandı. Giriş: kullanıcı adı '{SeedData.AdminUserName}', varsayılan şifre '1234' (girişten sonra değiştirin).",
             reminder =
                 "Güvenlik: CAKA_FACTORY_RESET_SECRET anahtarını şimdi kaldırın (Render Environment / yerel işletim)."
         });

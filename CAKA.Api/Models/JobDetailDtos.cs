@@ -21,6 +21,8 @@ public class JobParticipantDto
 /// </summary>
 public class JobStagePlanDto
 {
+    /// <summary>Veritabanındaki aşama kimliği (rapor eşlemesi için).</summary>
+    public Guid? StageId { get; set; }
     /// <summary>Stages listesi SortOrder'a göre sıralandıktan sonraki indeks.</summary>
     public int StageIndex { get; set; }
     public string UserName { get; set; } = string.Empty;

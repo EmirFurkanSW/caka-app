@@ -337,6 +337,7 @@ public class JobsController : ControllerBase
                 .Where(p => stageIndexById.ContainsKey(p.JobStageId))
                 .Select(p => new JobStagePlanDto
                 {
+                    StageId = p.JobStageId,
                     StageIndex = stageIndexById[p.JobStageId],
                     UserName = p.UserName,
                     PlannedHours = p.PlannedHours

@@ -236,7 +236,7 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
         for (var i = 0; i < EditStages.Count; i++)
         {
             var s = EditStages[i];
-            StagePickList.Add(new StagePickItem { Index = i, Label = FormatPlanStagePickLabel(s.Description, s.ResolvedName) });
+            StagePickList.Add(new StagePickItem { Index = i + 1, Label = FormatPlanStagePickLabel(s.Description, s.ResolvedName) });
         }
     }
 
@@ -287,8 +287,24 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
         }
 
         EditPlans.Clear();
+        var orderedStageIds = detail.Stages.OrderBy(x => x.SortOrder).Select(s => s.Id).ToList();
         foreach (var pl in detail.StagePlans.OrderBy(x => x.StageIndex).ThenBy(x => x.UserName))
-            EditPlans.Add(new JobPlanEditRow { StageIndex = pl.StageIndex, UserName = pl.UserName, PlannedHours = pl.PlannedHours });
+        {
+            var idx = pl.StageIndex;
+            if (pl.StageId.HasValue && pl.StageId.Value != Guid.Empty)
+            {
+                var byId = orderedStageIds.IndexOf(pl.StageId.Value);
+                if (byId >= 0)
+                    idx = byId;
+            }
+
+            EditPlans.Add(new JobPlanEditRow
+            {
+                StageIndex = idx,
+                UserName = pl.UserName,
+                PlannedHours = pl.PlannedHours
+            });
+        }
 
         RenormalizePlanStageIndices();
 

@@ -93,8 +93,8 @@ public class ReportExcelService : IReportExcelService
         IReadOnlyDictionary<string, string> display,
         IReadOnlyList<string>? columnUserPreset)
     {
-        var userCols = ResolveColumnUsernames(columnUserPreset, display, jobLogs);
         lookups.JobDetails.TryGetValue(jobId, out var detail);
+        var userCols = ResolveColumnUsernames(columnUserPreset, display, jobLogs, detail);
         var (code, jdesc) = lookups.ResolveJob(jobId);
 
         if (userCols.Count == 0)
@@ -330,7 +330,8 @@ public class ReportExcelService : IReportExcelService
     private static List<string> ResolveColumnUsernames(
         IReadOnlyList<string>? presetOrdered,
         IReadOnlyDictionary<string, string> display,
-        List<WorkLog> jobLogs)
+        List<WorkLog> jobLogs,
+        JobDetail? jobDetail = null)
     {
         if (presetOrdered is { Count: > 0 })
         {
@@ -341,12 +342,35 @@ public class ReportExcelService : IReportExcelService
                 .ToList();
         }
 
-        return jobLogs
-            .Where(l => !string.IsNullOrWhiteSpace(l.UserName))
-            .Select(l => l.UserName!.Trim())
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        return ResolveJobReportUsernames(jobDetail, jobLogs, display);
+    }
+
+    /// <summary>İş tanımındaki çalışanlar + dönemde kaydı olanlar (tüm sistem kullanıcıları değil).</summary>
+    private static List<string> ResolveJobReportUsernames(
+        JobDetail? detail,
+        List<WorkLog> jobLogs,
+        IReadOnlyDictionary<string, string> display)
+    {
+        var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (detail?.Participants is { Count: > 0 })
+        {
+            foreach (var p in detail.Participants)
+            {
+                if (!string.IsNullOrWhiteSpace(p.UserName))
+                    set.Add(p.UserName.Trim());
+            }
+        }
+
+        foreach (var l in jobLogs)
+        {
+            if (!string.IsNullOrWhiteSpace(l.UserName))
+                set.Add(l.UserName!.Trim());
+        }
+
+        if (set.Count == 0 && detail != null)
+            return UsersFromPlansAndLogs(detail, jobLogs).OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase).ToList();
+
+        return set.OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     /// <summary>Job definition stages; unassigned row last when any log could not be mapped to a stage.</summary>
@@ -369,10 +393,28 @@ public class ReportExcelService : IReportExcelService
     private static List<JobStageItem> OrderedStageItems(JobDetail detail) =>
         detail.Stages.OrderBy(x => x.SortOrder).ThenBy(x => x.Name, StringComparer.OrdinalIgnoreCase).ToList();
 
+    private static bool IsJobParticipant(JobDetail detail, string username)
+    {
+        if (detail.Participants.Count == 0)
+            return true;
+        return detail.Participants.Any(p => SameUser(p.UserName, username));
+    }
+
     private static decimal PlannedHoursFor(JobDetail detail, Guid stageId, string username)
     {
         if (stageId == Guid.Empty || string.IsNullOrWhiteSpace(username))
             return 0;
+        if (!IsJobParticipant(detail, username))
+            return 0;
+
+        var byStageId = detail.StagePlans
+            .Where(p => SameUser(p.UserName, username))
+            .Where(p => p.StageId.HasValue && p.StageId.Value == stageId)
+            .Sum(p => p.PlannedHours);
+        if (detail.StagePlans.Any(p =>
+                SameUser(p.UserName, username) && p.StageId.HasValue && p.StageId.Value == stageId))
+            return byStageId;
+
         var ordered = OrderedStageItems(detail);
         return detail.StagePlans
             .Where(p => SameUser(p.UserName, username))
@@ -383,9 +425,17 @@ public class ReportExcelService : IReportExcelService
     private static HashSet<string> UsersFromPlansAndLogs(JobDetail? detail, List<WorkLog> jobLogs)
     {
         var set = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        if (detail?.StagePlans != null)
+        if (detail?.Participants is { Count: > 0 })
         {
-            foreach (var p in detail.StagePlans)
+            foreach (var p in detail.Participants)
+            {
+                if (!string.IsNullOrWhiteSpace(p.UserName))
+                    set.Add(p.UserName.Trim());
+            }
+        }
+        else if (detail?.StagePlans != null)
+        {
+            foreach (var p in detail.StagePlans.Where(x => x.PlannedHours > 0))
             {
                 if (!string.IsNullOrWhiteSpace(p.UserName))
                     set.Add(p.UserName.Trim());
@@ -438,9 +488,7 @@ public class ReportExcelService : IReportExcelService
         }
 
         var orderedStages = OrderedStagesForJobPerformance(jobDetail, jobLogs);
-        var users = UsersFromPlansAndLogs(jobDetail, jobLogs)
-            .OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
-            .ToList();
+        var users = ResolveJobReportUsernames(jobDetail, jobLogs, display);
 
         var plannedActualRows = new List<(Guid StageId, string UserName, decimal Planned, decimal Actual)>();
         foreach (var sid in orderedStages)
@@ -1221,7 +1269,9 @@ public class ReportExcelService : IReportExcelService
             .OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        var totalPlannedInPlan = detail.StagePlans.Sum(p => p.PlannedHours);
+        var totalPlannedInPlan = detail.StagePlans
+            .Where(p => IsJobParticipant(detail, p.UserName))
+            .Sum(p => p.PlannedHours);
         var totalActualInWindow = jobLogs.Sum(l => l.Hours);
         var netVariance = totalActualInWindow - totalPlannedInPlan;
 
@@ -1509,17 +1559,8 @@ public class ReportExcelService : IReportExcelService
         ws.Columns().AdjustToContents();
     }
 
-    private static HashSet<string> AllUsernamesForOverview(JobDetail detail, List<WorkLog> jobLogs)
-    {
-        var set = UsersFromPlansAndLogs(detail, jobLogs);
-        foreach (var p in detail.Participants)
-        {
-            if (!string.IsNullOrWhiteSpace(p.UserName))
-                set.Add(p.UserName.Trim());
-        }
-
-        return set;
-    }
+    private static HashSet<string> AllUsernamesForOverview(JobDetail detail, List<WorkLog> jobLogs) =>
+        UsersFromPlansAndLogs(detail, jobLogs);
 
     private static decimal PlannedHoursForUserTotal(JobDetail detail, string username) =>
         OrderedStageItems(detail).Sum(st => PlannedHoursFor(detail, st.Id, username));

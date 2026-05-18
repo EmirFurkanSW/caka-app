@@ -19,6 +19,7 @@ public class JobParticipantItem
 
 public class JobStagePlanItem
 {
+    public Guid? StageId { get; set; }
     public int StageIndex { get; set; }
     public string UserName { get; set; } = string.Empty;
     public decimal PlannedHours { get; set; }

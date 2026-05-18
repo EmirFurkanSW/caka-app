@@ -126,7 +126,7 @@
                                     </Grid.ColumnDefinitions>
                                     <ComboBox Grid.Column="0" Padding="8,6"
                                               ItemsSource="{Binding DataContext.StagePickList, ElementName=Root}"
-                                              SelectedValue="{Binding StageIndex, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValue="{Binding StagePickerValue, UpdateSourceTrigger=PropertyChanged}"
                                               SelectedValuePath="Index"
                                               DisplayMemberPath="Label"/>
                                     <ComboBox Grid.Column="1" Margin="8,0" Padding="8,6"

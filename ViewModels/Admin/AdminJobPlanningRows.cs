@@ -74,7 +74,18 @@ public class JobPlanEditRow : ViewModelBase
     public int StageIndex
     {
         get => _stageIndex;
-        set => SetProperty(ref _stageIndex, value);
+        set
+        {
+            if (SetProperty(ref _stageIndex, value))
+                OnPropertyChanged(nameof(StagePickerValue));
+        }
+    }
+
+    /// <summary>WPF ComboBox SelectedValue=0 hatasını önlemek için 1 tabanlı bağlama.</summary>
+    public int StagePickerValue
+    {
+        get => StageIndex + 1;
+        set => StageIndex = Math.Max(0, value - 1);
     }
 
     public string UserName
@@ -92,6 +103,7 @@ public class JobPlanEditRow : ViewModelBase
 
 public class StagePickItem
 {
+    /// <summary>ComboBox için 1 tabanlı aşama numarası (0 WPF SelectedValue hatasını önler).</summary>
     public int Index { get; set; }
     public string Label { get; set; } = string.Empty;
 }

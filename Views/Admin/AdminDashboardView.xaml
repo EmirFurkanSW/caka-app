@@ -4,6 +4,44 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignHeight="400" d:DesignWidth="600">
+    <UserControl.Resources>
+        <!-- Sabit satır yükseklikleri: isim sarılsa bile çubuklar hizalı kalır -->
+        <DataTemplate x:Key="DashboardBarColumnTemplate">
+            <Grid Margin="0,0,20,0" Width="110" MinWidth="110" Height="210">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="22"/>
+                    <RowDefinition Height="120"/>
+                    <RowDefinition Height="56"/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0"
+                           Text="{Binding Value, StringFormat='{}{0:N1} sa'}"
+                           Style="{StaticResource SubtitleTextStyle}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Bottom"/>
+                <Grid Grid.Row="1" Margin="0,4,0,4">
+                    <Border VerticalAlignment="Bottom"
+                            HorizontalAlignment="Center"
+                            Width="32"
+                            CornerRadius="4"
+                            Height="{Binding Value, Converter={StaticResource ChartBarHeightConverter}}"
+                            Background="{StaticResource AccentBrush}"
+                            Opacity="0.85"/>
+                </Grid>
+                <TextBlock Grid.Row="2"
+                           Text="{Binding Label}"
+                           Style="{StaticResource SubtitleTextStyle}"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Top"
+                           TextAlignment="Center"
+                           TextWrapping="Wrap"
+                           MaxHeight="56"
+                           LineHeight="14"
+                           FontSize="12"
+                           ToolTip="{Binding Label}"/>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
     <StackPanel>
         <Grid Margin="0,0,0,24">
             <Grid.ColumnDefinitions>
@@ -13,55 +51,98 @@
             <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="0,0,12,0">
                 <StackPanel>
                     <TextBlock Text="Toplam Çalışan" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,8"/>
-                    <TextBlock FontSize="32" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}">
-                        <TextBlock.Text>
-                            <Binding Path="TotalEmployees"/>
-                        </TextBlock.Text>
-                    </TextBlock>
+                    <TextBlock FontSize="32" FontWeight="Bold" Foreground="{StaticResource PrimaryBrush}"
+                               Text="{Binding TotalEmployees}"/>
                 </StackPanel>
             </Border>
             <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="12,0,0,0">
                 <StackPanel>
-                    <TextBlock Text="Haftalık Toplam Saat" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,8"/>
-                    <TextBlock FontSize="32" FontWeight="Bold" Foreground="{StaticResource AccentBrush}">
-                        <TextBlock.Text>
-                            <Binding Path="WeeklyTotalHours" StringFormat="{}{0:N1}"/>
-                        </TextBlock.Text>
-                    </TextBlock>
+                    <TextBlock Text="{Binding PeriodTotalHoursLabel}" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,8"/>
+                    <TextBlock FontSize="32" FontWeight="Bold" Foreground="{StaticResource AccentBrush}"
+                               Text="{Binding PeriodTotalHours, StringFormat={}{0:N1}}"/>
                 </StackPanel>
             </Border>
         </Grid>
 
+        <!-- Personel grafiği -->
         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,24">
             <StackPanel>
-                <TextBlock Text="Haftalık Personel Çalışma Saatleri" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,16"/>
+                <TextBlock Text="{Binding PersonnelChartTitle}" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,12"/>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Başlangıç" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Style="{StaticResource SubtitleTextStyle}"/>
+                    <DatePicker Grid.Column="1" SelectedDate="{Binding PersonnelFilterFrom, UpdateSourceTrigger=PropertyChanged}"
+                                Width="130" Margin="0,0,16,0"/>
+                    <TextBlock Grid.Column="2" Text="Bitiş" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Style="{StaticResource SubtitleTextStyle}"/>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left">
+                        <DatePicker SelectedDate="{Binding PersonnelFilterTo, UpdateSourceTrigger=PropertyChanged}"
+                                    Width="130" Margin="0,0,8,0"/>
+                        <Button Content="Uygula" Command="{Binding ApplyPersonnelFilterCommand}"
+                                Padding="14,6" Margin="0,0,8,0"
+                                Background="{StaticResource AccentBrush}" Foreground="White"/>
+                        <Button Content="Bu hafta" Command="{Binding ResetPersonnelFilterCommand}"
+                                Padding="14,6" Style="{StaticResource SecondaryButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
                 <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
-                    <ItemsControl ItemsSource="{Binding ChartData}">
+                    <ItemsControl ItemsSource="{Binding ChartData}"
+                                  ItemTemplate="{StaticResource DashboardBarColumnTemplate}">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
                                 <StackPanel Orientation="Horizontal"/>
                             </ItemsPanelTemplate>
                         </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,0,20,0" Width="110" MinWidth="110" Height="180">
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto"/>
-                                        <RowDefinition Height="*"/>
-                                        <RowDefinition Height="Auto"/>
-                                    </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Text="{Binding Value, StringFormat='{}{0:N1} sa'}" Style="{StaticResource SubtitleTextStyle}" HorizontalAlignment="Center" Margin="0,0,0,4"/>
-                                    <Border Grid.Row="1" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,4,0,4"
-                                            Width="32" CornerRadius="4"
-                                            Height="{Binding Value, Converter={StaticResource ChartBarHeightConverter}}"
-                                            Background="{StaticResource AccentBrush}" Opacity="0.85"/>
-                                    <TextBlock Grid.Row="2" Text="{Binding Label}" Style="{StaticResource SubtitleTextStyle}" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"
-                                               ToolTip="{Binding Label}" Margin="0,6,0,0"/>
-                                </Grid>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
                     </ItemsControl>
                 </ScrollViewer>
+            </StackPanel>
+        </Border>
+
+        <!-- İş bazlı grafik -->
+        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,24">
+            <StackPanel>
+                <TextBlock Text="{Binding JobChartTitle}" Style="{StaticResource TitleTextStyle}" Margin="0,0,0,12"/>
+                <Grid Margin="0,0,0,16">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Başlangıç" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Style="{StaticResource SubtitleTextStyle}"/>
+                    <DatePicker Grid.Column="1" SelectedDate="{Binding JobFilterFrom, UpdateSourceTrigger=PropertyChanged}"
+                                Width="130" Margin="0,0,16,0"/>
+                    <TextBlock Grid.Column="2" Text="Bitiş" VerticalAlignment="Center" Margin="0,0,8,0"
+                               Style="{StaticResource SubtitleTextStyle}"/>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal" HorizontalAlignment="Left">
+                        <DatePicker SelectedDate="{Binding JobFilterTo, UpdateSourceTrigger=PropertyChanged}"
+                                    Width="130" Margin="0,0,8,0"/>
+                        <Button Content="Uygula" Command="{Binding ApplyJobFilterCommand}"
+                                Padding="14,6" Margin="0,0,8,0"
+                                Background="{StaticResource AccentBrush}" Foreground="White"/>
+                        <Button Content="Bu ay" Command="{Binding ResetJobFilterCommand}"
+                                Padding="14,6" Style="{StaticResource SecondaryButtonStyle}"/>
+                    </StackPanel>
+                </Grid>
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled">
+                    <ItemsControl ItemsSource="{Binding JobChartData}"
+                                  ItemTemplate="{StaticResource DashboardBarColumnTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+                <TextBlock Text="Varsayılan: içinde bulunulan ay. Tarih aralığını değiştirip Uygula ile iş bazında toplam saatleri görüntüleyin."
+                           Style="{StaticResource SubtitleTextStyle}" Margin="0,12,0,0" FontSize="11" Opacity="0.85"/>
             </StackPanel>
         </Border>
 

@@ -77,6 +77,8 @@ public class WorkEntryRow : INotifyPropertyChanged
                 var label = string.IsNullOrEmpty(desc) ? name : $"{name} - {desc}";
                 StageOptions.Add(new JobStagePickItem { StageId = s.Id, Label = label });
             }
+
+            SelectedStageId = StageOptions[0].StageId;
         }
         OnPropertyChanged(nameof(HasStageChoices));
     }

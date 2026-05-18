@@ -17,7 +17,6 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
         _reportExcelService = reportExcelService;
         _api = api;
         WeekGroups = new ObservableCollection<WeekWorkLogGroup>();
-        _pendingDeleteIds = new List<Guid>();
         RefreshCommand = new RelayCommand(_ => Refresh());
         SaveWeekEditsCommand = new RelayCommand(param =>
         {
@@ -49,7 +48,6 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
     private readonly IReportPdfService _reportPdfService;
     private readonly IReportExcelService _reportExcelService;
     private readonly BackendApiClient _api;
-    private readonly List<Guid> _pendingDeleteIds;
 
     public ObservableCollection<WeekWorkLogGroup> WeekGroups { get; }
     public ICommand RefreshCommand { get; }
@@ -71,9 +69,7 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
     {
         WeekGroups.Clear();
         var userName = _authService.CurrentUser?.UserName;
-        var list = _workLogService.GetByUser(userName)
-            .Where(log => !_pendingDeleteIds.Contains(log.Id))
-            .ToList();
+        var list = _workLogService.GetByUser(userName).ToList();
         var byWeek = list
             .GroupBy(log => GetMonday(log.Date))
             .OrderByDescending(g => g.Key)
@@ -100,8 +96,24 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
         if (currentWeekGroup == null) return;
         var found = currentWeekGroup.Entries.FirstOrDefault(e => e.Id == log.Id);
         if (found == null) return;
-        currentWeekGroup.Entries.Remove(found);
-        _pendingDeleteIds.Add(log.Id);
+
+        var confirm = MessageBox.Show(
+            "Bu iş kaydı kalıcı olarak silinecek. Devam etmek istiyor musunuz?",
+            "Kaydı sil",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Question);
+        if (confirm != MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            _workLogService.Delete(log.Id);
+            currentWeekGroup.Entries.Remove(found);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(ex.Message, "Kayıt silinemedi", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private void SaveWeekEdits(WeekWorkLogGroup group)
@@ -120,9 +132,6 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
                 if (log.Hours < 0 || log.Hours > 24) continue;
                 _workLogService.Update(log);
             }
-            foreach (var id in _pendingDeleteIds)
-                _workLogService.Delete(id);
-            _pendingDeleteIds.Clear();
             Refresh();
         }
         catch (Exception ex)
@@ -231,9 +240,5 @@ public class PersonelHistoryViewModel : ViewModelBase, INavigationRefresh
         MessageBox.Show($"{count} adet haftalık Excel kaydedildi.\n\nKlasör: {folder}", "CAKA", MessageBoxButton.OK, MessageBoxImage.Information);
     }
 
-    public void RefreshOnNavigate()
-    {
-        _pendingDeleteIds.Clear();
-        Refresh();
-    }
+    public void RefreshOnNavigate() => Refresh();
 }

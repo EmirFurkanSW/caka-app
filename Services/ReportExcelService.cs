@@ -218,8 +218,8 @@ public class ReportExcelService : IReportExcelService
             for (var i = 0; i < userCols.Count; i++)
             {
                 var h = sid == Guid.Empty
-                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage)
-                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid);
+                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage, detail: detail)
+                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid, detail);
                 ws.Cell(startRow, i + 2).Value = (double)h;
                 ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
                 ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
@@ -274,8 +274,8 @@ public class ReportExcelService : IReportExcelService
                 foreach (var u in userCols)
                 {
                     var uh = sid == Guid.Empty
-                        ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage)
-                        : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid);
+                        ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage, detail: detail)
+                        : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid, detail);
                     hrs += uh;
                     var rateOpt = jobId == Guid.Empty ? null : lookups.ParticipantHourly(u, jobId, out _);
                     if (rateOpt.HasValue)
@@ -349,28 +349,19 @@ public class ReportExcelService : IReportExcelService
             .ToList();
     }
 
-    /// <summary>All stages from job definition plus any extra stages in logs (+ optional general row).</summary>
+    /// <summary>Job definition stages; unassigned row last when any log could not be mapped to a stage.</summary>
     private static List<Guid> OrderedStagesForJobPerformance(JobDetail? detail, List<WorkLog> jobLogs)
     {
         var ordered = new List<Guid>();
-        var hasGeneral = jobLogs.Any(l => l.JobStageId == null || l.JobStageId == Guid.Empty);
-
-        if (hasGeneral)
-            ordered.Add(Guid.Empty);
 
         if (detail?.Stages is { Count: > 0 })
         {
-            foreach (var s in detail.Stages.OrderBy(x => x.SortOrder))
-                if (!ordered.Contains(s.Id))
-                    ordered.Add(s.Id);
+            foreach (var s in OrderedStageItems(detail))
+                ordered.Add(s.Id);
         }
 
-        foreach (var id in jobLogs
-                     .Where(l => l.JobStageId.HasValue && l.JobStageId != Guid.Empty)
-                     .Select(l => l.JobStageId!.Value)
-                     .Distinct())
-            if (!ordered.Contains(id))
-                ordered.Add(id);
+        if (jobLogs.Any(l => ResolveLogStageId(l, detail) == Guid.Empty))
+            ordered.Add(Guid.Empty);
 
         return ordered;
     }
@@ -383,11 +374,9 @@ public class ReportExcelService : IReportExcelService
         if (stageId == Guid.Empty || string.IsNullOrWhiteSpace(username))
             return 0;
         var ordered = OrderedStageItems(detail);
-        var ix = ordered.FindIndex(s => s.Id == stageId);
-        if (ix < 0)
-            return 0;
         return detail.StagePlans
-            .Where(p => p.StageIndex == ix && SameUser(p.UserName, username))
+            .Where(p => SameUser(p.UserName, username))
+            .Where(p => p.StageIndex >= 0 && p.StageIndex < ordered.Count && ordered[p.StageIndex].Id == stageId)
             .Sum(p => p.PlannedHours);
     }
 
@@ -460,8 +449,8 @@ public class ReportExcelService : IReportExcelService
             {
                 var planned = jobDetail != null ? PlannedHoursFor(jobDetail, sid, u) : 0;
                 var actual = sid == Guid.Empty
-                    ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage)
-                    : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid);
+                    ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage, detail: jobDetail)
+                    : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid, jobDetail);
                 if (planned == 0 && actual == 0)
                     continue;
                 plannedActualRows.Add((sid, u, planned, actual));
@@ -582,9 +571,21 @@ public class ReportExcelService : IReportExcelService
 
     private enum HourFilter { All, UnassignedStage, ExactStage }
 
-    private static decimal SumHoursForUser(List<WorkLog> logs, string userColumn, HourFilter mode, Guid stageId = default)
+    private static decimal SumHoursForUser(List<WorkLog> logs, string userColumn, HourFilter mode,
+        Guid stageId = default, JobDetail? detail = null)
     {
         var q = logs.Where(l => SameUser(l.UserName, userColumn));
+        if (detail is { Stages.Count: > 0 } && mode is HourFilter.UnassignedStage or HourFilter.ExactStage)
+        {
+            return mode switch
+            {
+                HourFilter.UnassignedStage => q.Where(l => ResolveLogStageId(l, detail) == Guid.Empty)
+                    .Sum(l => l.Hours),
+                HourFilter.ExactStage => q.Where(l => ResolveLogStageId(l, detail) == stageId).Sum(l => l.Hours),
+                _ => 0
+            };
+        }
+
         return mode switch
         {
             HourFilter.All => q.Sum(l => l.Hours),
@@ -595,35 +596,76 @@ public class ReportExcelService : IReportExcelService
         };
     }
 
+    /// <summary>
+    /// Gerçek aşama: JobStageId; yoksa kayıt metninden (API: "kod - açıklama · Stage 1"); tek aşamalı işte otomatik eşleme.
+    /// </summary>
+    private static Guid ResolveLogStageId(WorkLog log, JobDetail? detail)
+    {
+        if (detail is not { Stages.Count: > 0 })
+            return Guid.Empty;
+
+        if (log.JobId.HasValue && log.JobId.Value != detail.Id)
+            return Guid.Empty;
+
+        var ordered = OrderedStageItems(detail);
+
+        if (log.JobStageId is Guid rawId && rawId != Guid.Empty)
+        {
+            if (ordered.Any(s => s.Id == rawId))
+                return rawId;
+        }
+
+        var token = ExtractStageTokenFromDescription(log.Description);
+        if (!string.IsNullOrWhiteSpace(token))
+        {
+            for (var i = 0; i < ordered.Count; i++)
+            {
+                var s = ordered[i];
+                var orderNum = i + 1;
+                var name = string.IsNullOrWhiteSpace(s.Name) ? $"Stage {orderNum}" : s.Name.Trim();
+                var label = StagePickerLabel(s, orderNum);
+                var descOnly = (s.Description ?? "").Trim();
+
+                if (token.Equals(name, StringComparison.OrdinalIgnoreCase) ||
+                    token.Equals(label, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(descOnly) &&
+                     token.Equals(descOnly, StringComparison.OrdinalIgnoreCase)))
+                    return s.Id;
+            }
+        }
+
+        if (ordered.Count == 1)
+            return ordered[0].Id;
+
+        return Guid.Empty;
+    }
+
+    private static string StagePickerLabel(JobStageItem s, int orderNum)
+    {
+        var name = string.IsNullOrWhiteSpace(s.Name) ? $"Stage {orderNum}" : s.Name.Trim();
+        var desc = (s.Description ?? "").Trim();
+        return string.IsNullOrEmpty(desc) ? name : $"{name} - {desc}";
+    }
+
+    private static string? ExtractStageTokenFromDescription(string? description)
+    {
+        if (string.IsNullOrWhiteSpace(description))
+            return null;
+
+        var text = description.Trim();
+        var dot = text.LastIndexOf('·');
+        if (dot >= 0 && dot < text.Length - 1)
+            return text[(dot + 1)..].Trim();
+
+        var pipe = text.LastIndexOf('|');
+        if (pipe >= 0 && pipe < text.Length - 1)
+            return text[(pipe + 1)..].Trim();
+
+        return null;
+    }
+
     private static bool SameUser(string? logUser, string colUser) =>
         string.Equals(logUser?.Trim(), colUser, StringComparison.OrdinalIgnoreCase);
-
-    private static List<Guid> OrderedStageIdsForJob(JobDetail? d, List<WorkLog> jobLogs)
-    {
-        var logged = jobLogs.Where(l => l.JobStageId.HasValue && l.JobStageId != Guid.Empty)
-            .Select(l => l.JobStageId!.Value).Distinct().ToList();
-        var hasUnassigned = jobLogs.Any(l => l.JobStageId == null || l.JobStageId == Guid.Empty);
-        var order = new List<Guid>();
-
-        if (d?.Stages.Count > 0)
-        {
-            foreach (var s in d.Stages.OrderBy(x => x.SortOrder))
-                if (logged.Contains(s.Id))
-                    order.Add(s.Id);
-            foreach (var id in logged.OrderBy(id => id))
-                if (!order.Contains(id))
-                    order.Add(id);
-        }
-        else
-        {
-            order.AddRange(logged.OrderBy(id => id));
-        }
-
-        if (hasUnassigned)
-            order.Insert(0, Guid.Empty);
-
-        return order;
-    }
 
     private static WeekExcelLookups BuildLookupsFromJobDetail(JobDetail? jobDetail, string code, string desc)
     {
@@ -715,7 +757,7 @@ public class ReportExcelService : IReportExcelService
         ws.Row(startRow).Style.Font.FontSize = 13;
         startRow++;
 
-        var stages = OrderedStageIdsForJob(detail, jobLogs);
+        var stages = OrderedStagesForJobPerformance(detail, jobLogs);
 
         ws.Cell(startRow, 1).Value = "";
         for (var i = 0; i < userCols.Count; i++)
@@ -806,8 +848,8 @@ public class ReportExcelService : IReportExcelService
             for (var i = 0; i < userCols.Count; i++)
             {
                 var h = sid == Guid.Empty
-                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage)
-                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid);
+                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage, detail: detail)
+                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid, detail);
                 ws.Cell(startRow, i + 2).Value = (double)h;
                 ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
             }
@@ -845,8 +887,8 @@ public class ReportExcelService : IReportExcelService
             foreach (var u in userCols)
             {
                 var uh = sid == Guid.Empty
-                    ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage)
-                    : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid);
+                    ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage, detail: detail)
+                    : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid, detail);
 
                 hrs += uh;
                 var rateOpt = lookups.ParticipantHourly(u, jobId, out _);
@@ -1291,7 +1333,7 @@ public class ReportExcelService : IReportExcelService
         {
             var pSum = allUsers.Sum(user => PlannedHoursFor(detail, st.Id, user));
             var aSum = allUsers.Sum(user =>
-                SumHoursForUser(jobLogs, user, HourFilter.ExactStage, st.Id));
+                SumHoursForUser(jobLogs, user, HourFilter.ExactStage, st.Id, detail));
             var variance = aSum - pSum;
 
             ws.Cell(r, 1).Value = lookups.ResolveStageEnglish(jobId, st.Id);
@@ -1312,7 +1354,7 @@ public class ReportExcelService : IReportExcelService
         }
 
         var unassignedTotal = jobLogs
-            .Where(l => l.JobStageId == null || l.JobStageId == Guid.Empty)
+            .Where(l => ResolveLogStageId(l, detail) == Guid.Empty)
             .Sum(l => l.Hours);
         if (unassignedTotal > 0)
         {
@@ -1389,7 +1431,7 @@ public class ReportExcelService : IReportExcelService
             foreach (var st in orderedStages)
             {
                 var phx = PlannedHoursFor(detail, st.Id, u);
-                var act = SumHoursForUser(jobLogs, u, HourFilter.ExactStage, st.Id);
+                var act = SumHoursForUser(jobLogs, u, HourFilter.ExactStage, st.Id, detail);
                 if (phx == 0 && act == 0)
                     continue;
 
@@ -1411,7 +1453,7 @@ public class ReportExcelService : IReportExcelService
                 r++;
             }
 
-            var uUn = SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage);
+            var uUn = SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage, detail: detail);
             if (uUn > 0)
             {
                 var vv = uUn;

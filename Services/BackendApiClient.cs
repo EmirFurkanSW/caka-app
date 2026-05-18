@@ -367,7 +367,7 @@ public class BackendApiClient
                 workLog.Hours,
                 UserName = SecurityConstants.Truncate(workLog.UserName, SecurityConstants.MaxUserNameLength)
             };
-            var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var body = new StringContent(JsonSerializer.Serialize(dto, JsonOptions), Encoding.UTF8, "application/json");
             var res = await _http.PostAsync("api/worklogs", body).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
             {
@@ -398,7 +398,7 @@ public class BackendApiClient
                 Description = SecurityConstants.Truncate(workLog.Description, SecurityConstants.MaxDescriptionLength),
                 workLog.Hours
             };
-            var body = new StringContent(JsonSerializer.Serialize(dto), Encoding.UTF8, "application/json");
+            var body = new StringContent(JsonSerializer.Serialize(dto, JsonOptions), Encoding.UTF8, "application/json");
             var res = await _http.PutAsync($"api/worklogs/{workLog.Id}", body).ConfigureAwait(false);
             if (!res.IsSuccessStatusCode)
             {

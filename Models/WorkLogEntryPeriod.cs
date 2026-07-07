@@ -51,4 +51,20 @@ public static class WorkLogEntryPeriod
         var deadline = GetEntryDeadline(max);
         return $"Giriş yapılabilir tarihler: {min:dd.MM.yyyy} – {max:dd.MM.yyyy} · Son teslim: {deadline:dd.MM.yyyy} (Çarşamba)";
     }
+
+    /// <summary>DatePicker yerine hafta seçimi: düzenlenebilir haftaların Pazartesi tarihleri.</summary>
+    public static IReadOnlyList<DateTime> GetSelectableWeekStarts(DateTime today)
+    {
+        var (curStart, _) = GetWeekRange(today);
+        var prevStart = curStart.AddDays(-7);
+        var list = new List<DateTime>();
+        if (IsWeekEditable(prevStart, today))
+            list.Add(prevStart);
+        if (IsWeekEditable(curStart, today))
+            list.Add(curStart);
+        return list.OrderByDescending(w => w).ToList();
+    }
+
+    public static string FormatWeekLabel(DateTime weekStart) =>
+        $"{weekStart:dd.MM.yyyy} – {weekStart.AddDays(6):dd.MM.yyyy}";
 }

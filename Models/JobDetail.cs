@@ -31,6 +31,7 @@ public class JobDetail
     public string Code { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    public string? ProjectManagerUserName { get; set; }
     public List<JobStageItem> Stages { get; set; } = new();
     public List<JobParticipantItem> Participants { get; set; } = new();
     public List<JobStagePlanItem> StagePlans { get; set; } = new();

@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
             e.HasKey(x => x.Id);
             e.Property(x => x.Code).HasMaxLength(64);
             e.Property(x => x.Description).HasMaxLength(500);
+            e.Property(x => x.ProjectManagerUserName).HasMaxLength(128);
             e.HasIndex(x => x.Code).IsUnique();
         });
 

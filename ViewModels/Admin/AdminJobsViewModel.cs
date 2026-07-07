@@ -17,12 +17,14 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
 {
     private string _newCode = string.Empty;
     private string _newDescription = string.Empty;
+    private string? _selectedProjectManagerUserName;
     private string _statusMessage = string.Empty;
     private Job? _selectedJob;
 
-    public AdminJobsViewModel(BackendApiClient api)
+    public AdminJobsViewModel(BackendApiClient api, IAuthService authService)
     {
         _api = api;
+        _authService = authService;
         Jobs = new ObservableCollection<Job>();
         EditStages = new ObservableCollection<JobStageEditRow>();
         EditParticipants = new ObservableCollection<JobParticipantEditRow>();
@@ -38,10 +40,10 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
         EditParticipants.CollectionChanged += OnEditParticipantsCollectionChanged;
 
         RefreshCommand = new RelayCommand(_ => Refresh());
-        AddJobCommand = new RelayCommand(_ => AddJob(), _ => !string.IsNullOrWhiteSpace(NewCode));
-        DeleteJobCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedJob != null);
+        AddJobCommand = new RelayCommand(_ => AddJob(), _ => !string.IsNullOrWhiteSpace(NewCode) && !string.IsNullOrWhiteSpace(SelectedProjectManagerUserName));
+        DeleteJobCommand = new RelayCommand(_ => DeleteSelected(), _ => SelectedJob != null && IsFullJobAdmin);
         UpdateJobCommand = new RelayCommand(_ => UpdateSelected(), _ => SelectedJob != null && !string.IsNullOrWhiteSpace(NewCode));
-        CloseOrReopenJobCommand = new RelayCommand(_ => CloseOrReopenSelected(), _ => SelectedJob != null);
+        CloseOrReopenJobCommand = new RelayCommand(_ => CloseOrReopenSelected(), _ => SelectedJob != null && IsFullJobAdmin);
 
         AddStageCommand = new RelayCommand(_ => AddStageRow());
         RemoveStageCommand = new RelayCommand(p => RemoveStageRow(p as JobStageEditRow));
@@ -55,6 +57,10 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
     }
 
     private readonly BackendApiClient _api;
+    private readonly IAuthService _authService;
+
+    public bool IsFullJobAdmin =>
+        _authService.CurrentUser?.Role is UserRole.Admin or UserRole.Yonetici;
 
     public ObservableCollection<Job> Jobs { get; }
     public ObservableCollection<JobStageEditRow> EditStages { get; }
@@ -85,6 +91,7 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
                 ClearPlanningEditors();
                 NewCode = value.Code;
                 NewDescription = value.Description;
+                SelectedProjectManagerUserName = value.ProjectManagerUserName;
                 return;
             }
 
@@ -102,6 +109,19 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
     {
         get => _newDescription;
         set { if (SetProperty(ref _newDescription, value ?? "")) ClearStatus(); }
+    }
+
+    public string? SelectedProjectManagerUserName
+    {
+        get => _selectedProjectManagerUserName;
+        set
+        {
+            if (SetProperty(ref _selectedProjectManagerUserName, value))
+            {
+                ClearStatus();
+                (AddJobCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
     }
 
     public string StatusMessage
@@ -251,6 +271,7 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
     {
         NewCode = "";
         NewDescription = "";
+        SelectedProjectManagerUserName = null;
         ClearPlanningEditors();
     }
 
@@ -270,6 +291,7 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
     {
         NewCode = detail.Code;
         NewDescription = detail.Description;
+        SelectedProjectManagerUserName = detail.ProjectManagerUserName;
 
         EditStages.Clear();
         foreach (var s in detail.Stages.OrderBy(x => x.SortOrder))
@@ -321,6 +343,7 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
             Code = NewCode.Trim(),
             Description = NewDescription.Trim(),
             IsActive = isActive,
+            ProjectManagerUserName = SelectedProjectManagerUserName?.Trim(),
             Stages = EditStages.Select((s, i) => new JobStageItem
             {
                 Id = Guid.Empty,
@@ -433,14 +456,39 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
             EditPlans.Remove(row);
     }
 
-    public void Refresh(bool preserveSelection = true)
+    protected virtual bool ShouldIncludeJobInList(Job job)
+    {
+        if (IsFullJobAdmin) return true;
+        var me = _authService.CurrentUser?.UserName;
+        return !string.IsNullOrEmpty(me) &&
+               string.Equals(job.ProjectManagerUserName, me, StringComparison.OrdinalIgnoreCase);
+    }
+
+    protected Job EnrichJobForList(Job job)
+    {
+        var pm = job.ProjectManagerUserName?.Trim() ?? "";
+        if (string.IsNullOrEmpty(pm))
+        {
+            job.ProjectManagerDisplay = "";
+            return job;
+        }
+
+        var src = UserOptions.FirstOrDefault(x => string.Equals(x.UserName, pm, StringComparison.OrdinalIgnoreCase));
+        job.ProjectManagerDisplay = string.IsNullOrWhiteSpace(src?.DisplayName) ? pm : src.DisplayName;
+        return job;
+    }
+
+    public virtual void Refresh(bool preserveSelection = true)
     {
         var prevId = preserveSelection ? SelectedJob?.Id : null;
         Jobs.Clear();
         try
         {
             foreach (var j in _api.GetJobs(activeOnly: false))
-                Jobs.Add(j);
+            {
+                if (!ShouldIncludeJobInList(j)) continue;
+                Jobs.Add(EnrichJobForList(j));
+            }
             LoadUserOptions();
             StatusMessage = string.Empty;
         }
@@ -465,6 +513,12 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
         if (string.IsNullOrEmpty(code))
         {
             StatusMessage = "İş kodu girin.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(SelectedProjectManagerUserName))
+        {
+            StatusMessage = "Proje müdürü seçin.";
             return;
         }
 
@@ -494,6 +548,12 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
         if (string.IsNullOrEmpty(code))
         {
             StatusMessage = "İş kodu girin.";
+            return;
+        }
+
+        if (IsFullJobAdmin && string.IsNullOrWhiteSpace(SelectedProjectManagerUserName))
+        {
+            StatusMessage = "Proje müdürü seçin.";
             return;
         }
 

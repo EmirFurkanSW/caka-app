@@ -74,7 +74,8 @@ public static class DbSchemaUpdater
                 Id TEXT NOT NULL PRIMARY KEY,
                 Code TEXT NOT NULL,
                 Description TEXT NOT NULL,
-                IsActive INTEGER NOT NULL DEFAULT 1
+                IsActive INTEGER NOT NULL DEFAULT 1,
+                ProjectManagerUserName TEXT NULL
             );
         ");
         db.Database.ExecuteSqlRaw("CREATE UNIQUE INDEX IF NOT EXISTS IX_Jobs_Code ON Jobs(Code);");
@@ -96,7 +97,8 @@ public static class DbSchemaUpdater
                 "Id" UUID NOT NULL PRIMARY KEY,
                 "Code" VARCHAR(64) NOT NULL,
                 "Description" VARCHAR(500) NOT NULL,
-                "IsActive" BOOLEAN NOT NULL DEFAULT TRUE
+                "IsActive" BOOLEAN NOT NULL DEFAULT TRUE,
+                "ProjectManagerUserName" VARCHAR(128) NULL
             );
             """;
         db.Database.ExecuteSqlRaw(createTable);
@@ -284,6 +286,44 @@ public static class DbSchemaUpdater
         catch (Exception ex)
         {
             Console.WriteLine("DbSchemaUpdater (WorkLogJobStageId): " + ex.Message);
+        }
+    }
+
+    /// <summary>Jobs tablosuna proje müdürü sütununu ekler.</summary>
+    public static void EnsureJobProjectManagerColumn(AppDbContext db)
+    {
+        var provider = db.Database.ProviderName ?? "";
+        try
+        {
+            if (provider.Contains("Sqlite", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    db.Database.ExecuteSqlRaw("ALTER TABLE Jobs ADD COLUMN ProjectManagerUserName TEXT NULL;");
+                }
+                catch { /* sütun zaten var */ }
+            }
+            else if (provider.Contains("Npgsql", StringComparison.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    db.Database.ExecuteSqlRaw(
+                        """ALTER TABLE "Jobs" ADD COLUMN IF NOT EXISTS "ProjectManagerUserName" VARCHAR(128) NULL;""");
+                }
+                catch
+                {
+                    try
+                    {
+                        db.Database.ExecuteSqlRaw(
+                            """ALTER TABLE "Jobs" ADD COLUMN "ProjectManagerUserName" VARCHAR(128) NULL;""");
+                    }
+                    catch { }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine("DbSchemaUpdater (JobProjectManager): " + ex.Message);
         }
     }
 }

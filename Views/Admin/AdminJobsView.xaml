@@ -15,6 +15,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" MinWidth="140"/>
                             <ColumnDefinition Width="*" MinWidth="160"/>
+                            <ColumnDefinition Width="Auto" MinWidth="200"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
@@ -27,7 +28,16 @@
                             <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
                                      ToolTip="Örn. DemirExport"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12,0,0,0">
+                        <StackPanel Grid.Column="2" Margin="12,0">
+                            <TextBlock Text="Proje müdürü" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                            <ComboBox Padding="10,8"
+                                      ItemsSource="{Binding UserOptions}"
+                                      SelectedValue="{Binding SelectedProjectManagerUserName, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="UserName"
+                                      DisplayMemberPath="DisplayName"
+                                      ToolTip="Bu işin aşama, çalışan ve plan bilgilerini girecek kişi"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" VerticalAlignment="Bottom" Orientation="Horizontal" Margin="12,0,0,0">
                             <Button Content="İş ekle" Command="{Binding AddJobCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" Padding="20,10" Margin="0,0,8,0"/>
                         </StackPanel>

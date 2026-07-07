@@ -15,9 +15,11 @@
                             <Button Content="Yenile" Command="{Binding RefreshCommand}" Margin="0,0,8,0"
                                     Padding="12,8" Background="{StaticResource BorderBrush}" Foreground="{StaticResource TextPrimaryBrush}"/>
                             <Button Content="Kapat / Tekrar aç" Command="{Binding CloseOrReopenJobCommand}" Margin="0,0,8,0"
-                                    Padding="12,8" Background="#FF9800" Foreground="White"/>
+                                    Padding="12,8" Background="#FF9800" Foreground="White"
+                                    Visibility="{Binding IsFullJobAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                             <Button Content="Seçileni sil" Command="{Binding DeleteJobCommand}"
-                                    Padding="12,8" Background="#E57373" Foreground="White"/>
+                                    Padding="12,8" Background="#E57373" Foreground="White"
+                                    Visibility="{Binding IsFullJobAdmin, Converter={StaticResource BooleanToVisibilityConverter}}"/>
                         </StackPanel>
                     </Grid>
                     <DataGrid ItemsSource="{Binding Jobs}" SelectedItem="{Binding SelectedJob, Mode=TwoWay}"
@@ -26,7 +28,8 @@
                               BorderBrush="{StaticResource BorderBrush}" Margin="0,0,0,8">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="İş kodu" Binding="{Binding Code}" Width="120" MinWidth="100"/>
-                            <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="200"/>
+                            <DataGridTextColumn Header="Açıklama" Binding="{Binding Description}" Width="*" MinWidth="160"/>
+                            <DataGridTextColumn Header="Proje müdürü" Binding="{Binding ProjectManagerDisplay}" Width="160" MinWidth="120"/>
                             <DataGridTextColumn Header="Durum" Binding="{Binding StatusText}" Width="90" MinWidth="80"/>
                         </DataGrid.Columns>
                     </DataGrid>
@@ -42,17 +45,28 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" MinWidth="140"/>
                             <ColumnDefinition Width="*" MinWidth="160"/>
+                            <ColumnDefinition Width="Auto" MinWidth="200"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Margin="0,0,12,0">
                             <TextBlock Text="İş kodu" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
-                            <TextBox Text="{Binding NewCode, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"/>
+                            <TextBox Text="{Binding NewCode, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"
+                                     IsReadOnly="{Binding IsFullJobAdmin, Converter={StaticResource InverseBooleanConverter}}"/>
                         </StackPanel>
                         <StackPanel Grid.Column="1" Margin="12,0">
                             <TextBlock Text="Açıklama" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
                             <TextBox Text="{Binding NewDescription, UpdateSourceTrigger=PropertyChanged}" Padding="10,8"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="2" VerticalAlignment="Bottom" Margin="12,0,0,0">
+                        <StackPanel Grid.Column="2" Margin="12,0">
+                            <TextBlock Text="Proje müdürü" Style="{StaticResource SubtitleTextStyle}" Margin="0,0,0,4"/>
+                            <ComboBox Padding="10,8"
+                                      ItemsSource="{Binding UserOptions}"
+                                      SelectedValue="{Binding SelectedProjectManagerUserName, UpdateSourceTrigger=PropertyChanged}"
+                                      SelectedValuePath="UserName"
+                                      DisplayMemberPath="DisplayName"
+                                      IsEnabled="{Binding IsFullJobAdmin}"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="3" VerticalAlignment="Bottom" Margin="12,0,0,0">
                             <Button Content="Seçileni güncelle" Command="{Binding UpdateJobCommand}"
                                     Style="{StaticResource PrimaryButtonStyle}" Padding="16,10"/>
                         </StackPanel>

@@ -2,7 +2,9 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:personel="clr-namespace:CAKA.PerformanceApp.ViewModels.Personel"
+        xmlns:admin="clr-namespace:CAKA.PerformanceApp.ViewModels.Admin"
         xmlns:views="clr-namespace:CAKA.PerformanceApp.Views.Personel"
+        xmlns:adminViews="clr-namespace:CAKA.PerformanceApp.Views.Admin"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
@@ -24,6 +26,9 @@
         </DataTemplate>
         <DataTemplate DataType="{x:Type personel:PersonelProfileViewModel}">
             <views:PersonelProfileView/>
+        </DataTemplate>
+        <DataTemplate DataType="{x:Type admin:AdminJobManagementViewModel}">
+            <adminViews:AdminJobManagementView/>
         </DataTemplate>
         <ControlTemplate x:Key="SidebarButtonTemplate" TargetType="Button">
             <Border x:Name="bg" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}"

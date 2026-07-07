@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CAKA.Api.Data;
 using CAKA.Api.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -18,6 +19,16 @@ public class JobsController : ControllerBase
         _db = db;
     }
 
+    private string? CurrentUserName => User.FindFirstValue(ClaimTypes.Name);
+    private bool IsAdminOrYonetici => JwtRoleNormalizer.HasAdminOrYonetici(User);
+
+    private bool IsProjectManagerOf(JobEntity job) =>
+        !string.IsNullOrEmpty(CurrentUserName) &&
+        !string.IsNullOrEmpty(job.ProjectManagerUserName) &&
+        string.Equals(job.ProjectManagerUserName, CurrentUserName, StringComparison.OrdinalIgnoreCase);
+
+    private bool CanManageJob(JobEntity job) => IsAdminOrYonetici || IsProjectManagerOf(job);
+
     [HttpGet]
     public async Task<ActionResult<List<JobDto>>> GetAll([FromQuery] bool activeOnly = false)
     {
@@ -31,7 +42,8 @@ public class JobsController : ControllerBase
                 Id = j.Id,
                 Code = j.Code,
                 Description = j.Description,
-                IsActive = j.IsActive
+                IsActive = j.IsActive,
+                ProjectManagerUserName = j.ProjectManagerUserName
             })
             .ToListAsync();
         return list;
@@ -40,6 +52,12 @@ public class JobsController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<ActionResult<JobDetailDto>> GetById(Guid id)
     {
+        var job = await _db.Jobs.AsNoTracking().FirstOrDefaultAsync(j => j.Id == id);
+        if (job == null) return NotFound();
+
+        if (!job.IsActive && !IsAdminOrYonetici && !IsProjectManagerOf(job))
+            return Forbid();
+
         var detail = await MapJobToDetailDtoAsync(id);
         if (detail == null) return NotFound();
         return detail;
@@ -54,6 +72,9 @@ public class JobsController : ControllerBase
         var code = dto.Code.Trim();
         if (await _db.Jobs.AnyAsync(j => j.Code == code))
             return BadRequest("Bu iş kodu zaten kayıtlı.");
+
+        var pmErr = await ValidateProjectManagerAsync(dto.ProjectManagerUserName, required: true);
+        if (pmErr != null) return BadRequest(pmErr);
 
         dto.Stages ??= new List<JobStageDto>();
         dto.Participants ??= new List<JobParticipantDto>();
@@ -72,7 +93,8 @@ public class JobsController : ControllerBase
                     Id = Guid.NewGuid(),
                     Code = code,
                     Description = (dto.Description ?? "").Trim(),
-                    IsActive = dto.IsActive
+                    IsActive = dto.IsActive,
+                    ProjectManagerUserName = dto.ProjectManagerUserName!.Trim()
                 };
                 _db.Jobs.Add(entity);
                 await _db.SaveChangesAsync();
@@ -94,21 +116,36 @@ public class JobsController : ControllerBase
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Policy = "AdminOrYonetici")]
+    [Authorize(Policy = "AdminOrPersonel")]
     public async Task<ActionResult> Update(Guid id, [FromBody] JobDetailDto dto)
     {
         var entity = await _db.Jobs.FindAsync(id);
         if (entity == null) return NotFound();
+        if (!CanManageJob(entity)) return Forbid();
 
-        if (!string.IsNullOrWhiteSpace(dto.Code))
+        var isPmOnly = !IsAdminOrYonetici && IsProjectManagerOf(entity);
+
+        if (!isPmOnly)
         {
-            var code = dto.Code.Trim();
-            if (code != entity.Code && await _db.Jobs.AnyAsync(j => j.Code == code))
-                return BadRequest("Bu iş kodu zaten kayıtlı.");
-            entity.Code = code;
+            if (!string.IsNullOrWhiteSpace(dto.Code))
+            {
+                var code = dto.Code.Trim();
+                if (code != entity.Code && await _db.Jobs.AnyAsync(j => j.Code == code))
+                    return BadRequest("Bu iş kodu zaten kayıtlı.");
+                entity.Code = code;
+            }
+
+            if (dto.ProjectManagerUserName != null)
+            {
+                var pmErr = await ValidateProjectManagerAsync(dto.ProjectManagerUserName, required: true);
+                if (pmErr != null) return BadRequest(pmErr);
+                entity.ProjectManagerUserName = dto.ProjectManagerUserName.Trim();
+            }
+
+            entity.IsActive = dto.IsActive;
         }
+
         entity.Description = (dto.Description ?? "").Trim();
-        entity.IsActive = dto.IsActive;
 
         if (dto.Stages != null)
         {
@@ -145,6 +182,16 @@ public class JobsController : ControllerBase
         _db.Jobs.Remove(entity);
         await _db.SaveChangesAsync();
         return NoContent();
+    }
+
+    private async Task<string?> ValidateProjectManagerAsync(string? userName, bool required)
+    {
+        if (string.IsNullOrWhiteSpace(userName))
+            return required ? "Proje müdürü seçilmelidir." : null;
+        var pm = userName.Trim();
+        if (!await _db.Users.AnyAsync(u => u.UserName == pm))
+            return "Seçilen proje müdürü sistemde bulunamadı.";
+        return null;
     }
 
     private static string? ValidatePlanning(JobDetailDto dto)
@@ -320,6 +367,7 @@ public class JobsController : ControllerBase
             Code = job.Code,
             Description = job.Description,
             IsActive = job.IsActive,
+            ProjectManagerUserName = job.ProjectManagerUserName,
             Stages = stages.Select(s => new JobStageDto
             {
                 Id = s.Id,

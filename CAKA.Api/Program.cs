@@ -99,6 +99,7 @@ using (var scope = app.Services.CreateScope())
     DbSchemaUpdater.EnsureJobParticipantCurrencyColumn(db);
     DbSchemaUpdater.EnsureWorkLogJobStageIdColumn(db);
     DbSchemaUpdater.EnsureUserHourlyRateColumn(db);
+    DbSchemaUpdater.EnsureJobProjectManagerColumn(db);
 
     var factoryReset = Environment.GetEnvironmentVariable("CAKA_FACTORY_RESET");
     if (!string.IsNullOrWhiteSpace(factoryReset) &&

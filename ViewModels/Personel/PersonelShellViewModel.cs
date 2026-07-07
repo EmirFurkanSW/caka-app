@@ -1,8 +1,10 @@
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using CAKA.PerformanceApp.Core;
 using CAKA.PerformanceApp.Services;
+using CAKA.PerformanceApp.ViewModels.Admin;
 
 namespace CAKA.PerformanceApp.ViewModels.Personel;
 
@@ -14,10 +16,12 @@ public class PersonelShellViewModel : ViewModelBase
     public PersonelShellViewModel(
         IAuthService authService,
         IServiceProvider serviceProvider,
+        BackendApiClient api,
         PersonelDashboardViewModel dashboardVm,
         PersonelAddWorkViewModel addWorkVm,
         PersonelHistoryViewModel historyVm,
-        PersonelProfileViewModel profileVm)
+        PersonelProfileViewModel profileVm,
+        AdminJobManagementViewModel jobManagementVm)
     {
         _authService = authService;
         _serviceProvider = serviceProvider;
@@ -29,6 +33,11 @@ public class PersonelShellViewModel : ViewModelBase
             new("Geçmiş", "History", () => NavigateTo(historyVm)),
             new("Profil", "Account", () => NavigateTo(profileVm))
         };
+
+        if (IsProjectManagerForAnyJob(api, authService))
+        {
+            MenuItems.Insert(1, new PersonelMenuItem("İş Yönetimi", "BriefcaseEdit", () => NavigateTo(jobManagementVm)));
+        }
 
         NavigateCommand = new RelayCommand(param =>
         {
@@ -64,11 +73,27 @@ public class PersonelShellViewModel : ViewModelBase
         }
     }
 
+    private static bool IsProjectManagerForAnyJob(BackendApiClient api, IAuthService authService)
+    {
+        var me = authService.CurrentUser?.UserName;
+        if (string.IsNullOrWhiteSpace(me)) return false;
+        try
+        {
+            return api.GetJobs(activeOnly: false)
+                .Any(j => string.Equals(j.ProjectManagerUserName, me, StringComparison.OrdinalIgnoreCase));
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     private void NavigateTo(ViewModelBase page)
     {
         SetProperty(ref _currentPage, page, nameof(CurrentPage));
         PageTitle = page is PersonelDashboardViewModel ? "Dashboard"
             : page is PersonelAddWorkViewModel ? "İş Kaydı Gir"
+            : page is AdminJobManagementViewModel ? "İş Yönetimi"
             : page is PersonelHistoryViewModel ? "Geçmiş"
             : "Profil";
         if (page is INavigationRefresh nav)

@@ -11,4 +11,6 @@ public class JobEntity
     /// <summary>Açıklama, örn. DemirExport</summary>
     public string Description { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
+    /// <summary>Bu işin proje müdürü (Users.UserName). Aşama/çalışan/plan yönetim yetkisi.</summary>
+    public string? ProjectManagerUserName { get; set; }
 }

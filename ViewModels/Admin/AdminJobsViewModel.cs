@@ -205,7 +205,35 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
                 UserOptions.Add(u);
         }
         catch { /* liste boş kalır */ }
+        EnsureAssignedUsersInOptions();
         RebuildPlanParticipantPickList();
+    }
+
+    /// <summary>Mevcut iş satırlarındaki kullanıcılar listede yoksa ekle (PM API listesi alamazsa yedek).</summary>
+    private void EnsureAssignedUsersInOptions()
+    {
+        foreach (var p in EditParticipants)
+        {
+            if (!string.IsNullOrWhiteSpace(p.UserName))
+                EnsureUserInOptions(p.UserName.Trim());
+        }
+        foreach (var pl in EditPlans)
+        {
+            if (!string.IsNullOrWhiteSpace(pl.UserName))
+                EnsureUserInOptions(pl.UserName.Trim());
+        }
+    }
+
+    private void EnsureUserInOptions(string userName)
+    {
+        if (UserOptions.Any(u => string.Equals(u.UserName, userName, StringComparison.OrdinalIgnoreCase)))
+            return;
+        UserOptions.Add(new StoredUser
+        {
+            UserName = userName,
+            DisplayName = userName,
+            Role = "Personel"
+        });
     }
 
     private void ReleaseParticipantSubscriptions(IEnumerable<JobParticipantEditRow> rows)
@@ -331,6 +359,7 @@ public class AdminJobsViewModel : ViewModelBase, INavigationRefresh
         RenormalizePlanStageIndices();
 
         RebuildStagePickList();
+        EnsureAssignedUsersInOptions();
         RebuildPlanParticipantPickList();
         StatusMessage = string.Empty;
     }

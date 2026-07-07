@@ -22,10 +22,28 @@ public class UsersController : ControllerBase
 
     private static bool IsCallerFullAdmin(ClaimsPrincipal user) => JwtRoleNormalizer.HasAdmin(user);
 
+    private string? CurrentUserName => User.FindFirstValue(ClaimTypes.Name);
+
+    /// <summary>Admin/yönetici veya en az bir işin proje müdürü kullanıcı listesini çalışan ataması için görebilir.</summary>
+    private async Task<bool> CanListUsersForJobAssignmentAsync()
+    {
+        if (JwtRoleNormalizer.HasAdminOrYonetici(User))
+            return true;
+        var me = CurrentUserName;
+        if (string.IsNullOrEmpty(me))
+            return false;
+        return await _db.Jobs.AsNoTracking()
+            .AnyAsync(j => j.ProjectManagerUserName != null &&
+                           j.ProjectManagerUserName.ToLower() == me.ToLower());
+    }
+
     [HttpGet]
-    [Authorize(Policy = "AdminOrYonetici")]
+    [Authorize(Policy = "AdminOrPersonel")]
     public async Task<ActionResult<List<StoredUserDto>>> GetAll()
     {
+        if (!await CanListUsersForJobAssignmentAsync())
+            return Forbid();
+
         var list = await _db.Users
             .Where(u => u.Role != "Admin")
             .OrderBy(u => u.UserName)

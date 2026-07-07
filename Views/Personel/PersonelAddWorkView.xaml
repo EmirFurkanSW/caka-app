@@ -5,288 +5,420 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              mc:Ignorable="d" d:DesignHeight="700" d:DesignWidth="1100">
+    <UserControl.Resources>
+        <Style x:Key="TimesheetComboStyle" TargetType="ComboBox">
+            <Setter Property="Padding" Value="6,3"/>
+            <Setter Property="Margin" Value="3,2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#D1D9E0"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        <Style x:Key="TimesheetHourBoxStyle" TargetType="TextBox">
+            <Setter Property="Padding" Value="4,2"/>
+            <Setter Property="Margin" Value="3,2"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Height" Value="28"/>
+            <Setter Property="Width" Value="69"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="BorderBrush" Value="#D1D9E0"/>
+            <Setter Property="Background" Value="White"/>
+        </Style>
+        <Style x:Key="TimesheetDeleteButtonStyle" TargetType="Button">
+            <Setter Property="Width" Value="26"/>
+            <Setter Property="Height" Value="26"/>
+            <Setter Property="Margin" Value="3,2"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Content" Value="×"/>
+            <Setter Property="ToolTip" Value="Satırı sil"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#94A3B8"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#FEF2F2"/>
+                                <Setter TargetName="bg" Property="BorderBrush" Value="#FECACA"/>
+                                <Setter Property="Foreground" Value="#DC2626"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TimesheetToolbarButtonStyle" TargetType="Button">
+            <Setter Property="Padding" Value="12,5"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="MinWidth" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="{StaticResource PrimaryBrush}"/>
+            <Setter Property="BorderBrush" Value="#D1D9E0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="4" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Background" Value="#F0F4F8"/>
+                                <Setter TargetName="border" Property="BorderBrush" Value="{StaticResource PrimaryBrush}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="TimesheetSaveButtonStyle" TargetType="Button" BasedOn="{StaticResource PrimaryButtonStyle}">
+            <Setter Property="Padding" Value="22,9"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="MinWidth" Value="140"/>
+        </Style>
+    </UserControl.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <!-- Başlık -->
-        <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,12" Padding="24,18">
+        <!-- Üst bilgi + hafta seçimi -->
+        <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="0,0,0,10" Padding="16,12">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="İş Kaydı Gir" Style="{StaticResource TitleTextStyle}"/>
-                    <TextBlock Text="Haftalık çalışma saatlerinizi tek tabloda girin. Her gün için hedef 8 saattir (hafta içi)."
-                               Style="{StaticResource SubtitleTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock Text="İş Kaydı Gir" Style="{StaticResource TitleTextStyle}" FontSize="20"/>
+                    <TextBlock Text="Haftalık çalışma saatlerinizi tek tabloda girin · Hedef: 8 saat/gün (hafta içi)"
+                               Style="{StaticResource SubtitleTextStyle}" Margin="0,4,0,0" FontSize="12"/>
+                    <TextBlock Text="{Binding AllowedPeriodHint}" Foreground="{StaticResource TextSecondaryBrush}"
+                               FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
-                <Button Grid.Column="1" Content="+ Satır ekle" Command="{Binding AddRowCommand}"
-                        Style="{StaticResource DashboardFilterApplyButtonStyle}"
-                        VerticalAlignment="Center" MinWidth="120"/>
-            </Grid>
-        </Border>
-
-        <!-- Hafta seçimi -->
-        <Border Grid.Row="1" Style="{StaticResource DashboardFilterPanelStyle}" Margin="0,0,0,12">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0">
-                    <TextBlock Text="Çalışma haftası" Style="{StaticResource DashboardFilterTitleStyle}"/>
-                    <TextBlock Text="{Binding AllowedPeriodHint}" Style="{StaticResource DashboardFilterHintStyle}"
-                               Margin="0,6,0,0" TextWrapping="Wrap" MaxWidth="720"/>
-                </StackPanel>
-                <StackPanel Grid.Column="1" HorizontalAlignment="Right" MinWidth="240">
-                    <TextBlock Text="HAFTA" Style="{StaticResource DashboardFilterLabelStyle}"/>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" MinWidth="200">
+                    <TextBlock Text="Çalışma haftası" FontSize="10" FontWeight="SemiBold"
+                               Foreground="{StaticResource TextSecondaryBrush}" Margin="0,0,0,4"/>
                     <ComboBox ItemsSource="{Binding AvailableWeeks}"
                               SelectedValue="{Binding SelectedWeekStart, UpdateSourceTrigger=PropertyChanged}"
                               SelectedValuePath="WeekStart"
                               DisplayMemberPath="Label"
-                              Padding="10,8" FontSize="13" MinWidth="220"/>
+                              Padding="8,5" FontSize="12" MinWidth="200"
+                              BorderBrush="#D1D9E0"/>
                 </StackPanel>
             </Grid>
         </Border>
 
-        <!-- Hedef + tarih şeridi -->
-        <StackPanel Grid.Row="2">
-            <Border Background="#E8F4FD" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,1,1,0" Padding="0">
-                <Grid Height="40">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="220" MinWidth="180"/>
-                        <ColumnDefinition Width="180" MinWidth="140"/>
-                        <ColumnDefinition Width="72"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="56"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" Text="Hedef (günlük)" FontWeight="SemiBold" VerticalAlignment="Center"
-                               Margin="14,0,8,0" Foreground="{StaticResource TextPrimaryBrush}"/>
-                    <TextBlock Grid.Column="2" Text="{Binding TargetWeekTotal}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="3" Text="{Binding TargetWeekdayHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="4" Text="{Binding TargetWeekdayHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="5" Text="{Binding TargetWeekdayHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="6" Text="{Binding TargetWeekdayHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="7" Text="{Binding TargetWeekdayHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="8" Text="{Binding TargetWeekendHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="9" Text="{Binding TargetWeekendHours}" FontWeight="Bold"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
-            <Border Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,0" Padding="0">
-                <Grid Height="28">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="220" MinWidth="180"/>
-                        <ColumnDefinition Width="180" MinWidth="140"/>
-                        <ColumnDefinition Width="72"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="64"/>
-                        <ColumnDefinition Width="56"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="3" Text="{Binding Day1Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="4" Text="{Binding Day2Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="5" Text="{Binding Day3Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="6" Text="{Binding Day4Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="7" Text="{Binding Day5Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="8" Text="{Binding Day6Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                    <TextBlock Grid.Column="9" Text="{Binding Day7Date}" FontSize="11" Foreground="{StaticResource TextSecondaryBrush}"
-                               VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                </Grid>
-            </Border>
-        </StackPanel>
+        <!-- Ana tablo kartı -->
+        <Border Grid.Row="1" Style="{StaticResource CardStyle}" Padding="0">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
 
-        <!-- Haftalık tablo -->
-        <Border Grid.Row="3" Style="{StaticResource CardStyle}" Padding="0" BorderThickness="1,0,1,1">
-            <DataGrid ItemsSource="{Binding Entries}"
-                      Style="{StaticResource PersonelWorkDataGridStyle}"
-                      Margin="0" MinHeight="260"
-                      IsReadOnly="{Binding IsWeekEditable, Converter={StaticResource InverseBooleanConverter}}">
-                <DataGrid.Columns>
-                    <DataGridTemplateColumn Header="İş / Tür" Width="220" MinWidth="180">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <ComboBox ItemsSource="{Binding DataContext.Jobs, ElementName=Root}"
-                                          SelectedItem="{Binding SelectedJob, UpdateSourceTrigger=PropertyChanged}"
-                                          DisplayMemberPath="DisplayText"
-                                          Padding="8,6" Margin="6,4" FontSize="12"
-                                          IsEnabled="{Binding DataContext.IsWeekEditable, ElementName=Root}"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Aşama" Width="180" MinWidth="140">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <ComboBox ItemsSource="{Binding StageOptions}"
-                                          SelectedValue="{Binding SelectedStageId, UpdateSourceTrigger=PropertyChanged}"
-                                          SelectedValuePath="StageId"
-                                          DisplayMemberPath="Label"
-                                          IsEnabled="{Binding HasStageChoices}"
-                                          Padding="8,6" Margin="6,4" FontSize="12"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTextColumn Header="Toplam" Binding="{Binding RowTotal, StringFormat={}{0:0.#}}"
-                                        Width="72" IsReadOnly="True">
-                        <DataGridTextColumn.ElementStyle>
-                            <Style TargetType="TextBlock">
-                                <Setter Property="FontWeight" Value="SemiBold"/>
-                                <Setter Property="HorizontalAlignment" Value="Center"/>
-                                <Setter Property="VerticalAlignment" Value="Center"/>
-                            </Style>
-                        </DataGridTextColumn.ElementStyle>
-                    </DataGridTextColumn>
-                    <DataGridTemplateColumn Header="Pzt" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursMonday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Sal" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursTuesday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Çar" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursWednesday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Per" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursThursday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Cum" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursFriday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Cmt" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursSaturday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="Paz" Width="64">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBox Text="{Binding HoursSunday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"
-                                         Padding="6,6" Margin="4,4" FontSize="12" HorizontalContentAlignment="Center"/>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                    <DataGridTemplateColumn Header="" Width="56">
-                        <DataGridTemplateColumn.CellTemplate>
-                            <DataTemplate>
-                                <Button Content="Sil" Command="{Binding DataContext.RemoveRowCommand, ElementName=Root}"
-                                        CommandParameter="{Binding}"
-                                        Margin="4,4" Padding="10,5" FontSize="11"
-                                        Background="#C62828" Foreground="White" BorderThickness="0"
-                                        Visibility="{Binding DataContext.IsWeekEditable, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}">
-                                    <Button.Template>
-                                        <ControlTemplate TargetType="Button">
-                                            <Border Background="{TemplateBinding Background}" CornerRadius="4" Padding="{TemplateBinding Padding}">
-                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                            </Border>
-                                        </ControlTemplate>
-                                    </Button.Template>
-                                </Button>
-                            </DataTemplate>
-                        </DataGridTemplateColumn.CellTemplate>
-                    </DataGridTemplateColumn>
-                </DataGrid.Columns>
-            </DataGrid>
-        </Border>
+                <!-- Araç çubuğu -->
+                <Border Grid.Row="0" Background="#F8FAFC" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="12,8">
+                    <Grid>
+                        <TextBlock Text="Çalışma satırları" FontWeight="SemiBold" FontSize="12"
+                                   VerticalAlignment="Center" Foreground="{StaticResource TextPrimaryBrush}"/>
+                        <Button Content="+ Satır ekle" Command="{Binding AddRowCommand}"
+                                Style="{StaticResource TimesheetToolbarButtonStyle}"
+                                HorizontalAlignment="Right"/>
+                    </Grid>
+                </Border>
 
-        <!-- Günlük toplamlar -->
-        <Border Grid.Row="4" Background="#F1F5F9" BorderBrush="{StaticResource BorderBrush}" BorderThickness="1,0,1,1"
-                Padding="0" Margin="0,0,0,12">
-            <Grid Height="40">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="220" MinWidth="180"/>
-                    <ColumnDefinition Width="180" MinWidth="140"/>
-                    <ColumnDefinition Width="72"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="64"/>
-                    <ColumnDefinition Width="56"/>
-                </Grid.ColumnDefinitions>
-                <TextBlock Grid.Column="0" Text="Girilen toplam" FontWeight="SemiBold" VerticalAlignment="Center" Margin="14,0,8,0"/>
-                <TextBlock Grid.Column="2" Text="{Binding TotalAll, StringFormat={}{0:0.#}}" FontWeight="Bold"
-                           VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="3" Text="{Binding TotalMonday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="4" Text="{Binding TotalTuesday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="5" Text="{Binding TotalWednesday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="6" Text="{Binding TotalThursday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="7" Text="{Binding TotalFriday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="8" Text="{Binding TotalSaturday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                <TextBlock Grid.Column="9" Text="{Binding TotalSunday, StringFormat={}{0:0.#}}" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                <!-- Hedef satırı -->
+                <Border Grid.Row="1" Background="#EFF6FF" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,0,0,1" Padding="0">
+                    <Grid Height="34">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="300" MinWidth="240"/>
+                            <ColumnDefinition Width="240" MinWidth="180"/>
+                            <ColumnDefinition Width="78"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="48"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Hedef" FontSize="12" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="12,0,4,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding TargetWeekTotal}" FontSize="11" FontWeight="Bold"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="{Binding TargetWeekdayHours}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#2563EB" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="{Binding TargetWeekdayHours}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#2563EB" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="5" Text="{Binding TargetWeekdayHours}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#2563EB" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="6" Text="{Binding TargetWeekdayHours}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#2563EB" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="7" Text="{Binding TargetWeekdayHours}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="#2563EB" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="8" Text="{Binding TargetWeekendHours}" FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="9" Text="{Binding TargetWeekendHours}" FontSize="11"
+                                   Foreground="{StaticResource TextSecondaryBrush}"
+                                   VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Grid>
+                </Border>
+
+                <!-- Veri tablosu -->
+                <DataGrid Grid.Row="2" ItemsSource="{Binding Entries}"
+                          Style="{StaticResource PersonelWeeklyTimesheetDataGridStyle}"
+                          MinHeight="120"
+                          IsReadOnly="{Binding IsWeekEditable, Converter={StaticResource InverseBooleanConverter}}">
+                    <DataGrid.Columns>
+                        <DataGridTemplateColumn Header="İş / Tür" Width="300" MinWidth="240">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Style="{StaticResource TimesheetComboStyle}"
+                                              ItemsSource="{Binding DataContext.Jobs, ElementName=Root}"
+                                              SelectedItem="{Binding SelectedJob, UpdateSourceTrigger=PropertyChanged}"
+                                              DisplayMemberPath="DisplayText"
+                                              IsEnabled="{Binding DataContext.IsWeekEditable, ElementName=Root}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="Aşama" Width="240" MinWidth="180">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <ComboBox Style="{StaticResource TimesheetComboStyle}"
+                                              ItemsSource="{Binding StageOptions}"
+                                              SelectedValue="{Binding SelectedStageId, UpdateSourceTrigger=PropertyChanged}"
+                                              SelectedValuePath="StageId"
+                                              DisplayMemberPath="Label"
+                                              IsEnabled="{Binding HasStageChoices}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTextColumn Header="Σ" Binding="{Binding RowTotal, StringFormat={}{0:0.#}}"
+                                            Width="78" IsReadOnly="True">
+                            <DataGridTextColumn.ElementStyle>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="FontWeight" Value="SemiBold"/>
+                                    <Setter Property="FontSize" Value="12"/>
+                                    <Setter Property="HorizontalAlignment" Value="Center"/>
+                                    <Setter Property="VerticalAlignment" Value="Center"/>
+                                    <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}"/>
+                                </Style>
+                            </DataGridTextColumn.ElementStyle>
+                        </DataGridTextColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Pzt" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day1Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursMonday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Sal" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day2Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursTuesday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Çar" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day3Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursWednesday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Per" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day4Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursThursday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Cum" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day5Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursFriday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Cmt" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day6Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursSaturday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Width="72">
+                            <DataGridTemplateColumn.HeaderTemplate>
+                                <DataTemplate>
+                                    <StackPanel HorizontalAlignment="Center">
+                                        <TextBlock Text="Paz" FontSize="11" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                        <TextBlock Text="{Binding DataContext.Day7Date, ElementName=Root}"
+                                                   FontSize="9" Opacity="0.85" HorizontalAlignment="Center"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.HeaderTemplate>
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <TextBox Style="{StaticResource TimesheetHourBoxStyle}"
+                                             Text="{Binding HoursSunday, UpdateSourceTrigger=LostFocus, Converter={StaticResource DecimalToStringConverter}, Mode=TwoWay}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                        <DataGridTemplateColumn Header="" Width="48">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <Button Style="{StaticResource TimesheetDeleteButtonStyle}"
+                                            Command="{Binding DataContext.RemoveRowCommand, ElementName=Root}"
+                                            CommandParameter="{Binding}"
+                                            Visibility="{Binding DataContext.IsWeekEditable, ElementName=Root, Converter={StaticResource BooleanToVisibilityConverter}}"/>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <!-- Girilen toplam -->
+                <Border Grid.Row="3" Background="#F1F5F9" BorderBrush="{StaticResource BorderBrush}"
+                        BorderThickness="0,1,0,0" Padding="0">
+                    <Grid Height="34">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="300" MinWidth="240"/>
+                            <ColumnDefinition Width="240" MinWidth="180"/>
+                            <ColumnDefinition Width="78"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="72"/>
+                            <ColumnDefinition Width="48"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="Girilen toplam" FontSize="12" FontWeight="SemiBold"
+                                   VerticalAlignment="Center" Margin="12,0,4,0"
+                                   Foreground="{StaticResource TextSecondaryBrush}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding TotalAll, StringFormat={}{0:0.#}}"
+                                   FontSize="11" FontWeight="Bold" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="3" Text="{Binding TotalMonday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="4" Text="{Binding TotalTuesday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="5" Text="{Binding TotalWednesday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="6" Text="{Binding TotalThursday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="7" Text="{Binding TotalFriday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="8" Text="{Binding TotalSaturday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                        <TextBlock Grid.Column="9" Text="{Binding TotalSunday, StringFormat={}{0:0.#}}"
+                                   FontSize="11" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                    </Grid>
+                </Border>
             </Grid>
         </Border>
 
-        <!-- Kaydet -->
-        <Border Grid.Row="5" Padding="0,4,0,0">
+        <!-- Alt aksiyon -->
+        <Border Grid.Row="2" Margin="0,10,0,0" Padding="0">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
                 <TextBlock Grid.Column="0" Text="{Binding StatusMessage}" VerticalAlignment="Center"
-                           Foreground="{StaticResource AccentBrush}" FontSize="13" TextWrapping="Wrap"
+                           Foreground="{StaticResource AccentBrush}" FontSize="12" TextWrapping="Wrap"
                            Visibility="{Binding StatusMessage, Converter={StaticResource StringToVisibilityConverter}}"/>
                 <Button Grid.Column="1" Content="Haftayı kaydet" Command="{Binding SaveCommand}"
-                        Style="{StaticResource PrimaryButtonStyle}" Padding="36,14" FontSize="14" MinWidth="180"/>
+                        Style="{StaticResource TimesheetSaveButtonStyle}"/>
             </Grid>
         </Border>
     </Grid>

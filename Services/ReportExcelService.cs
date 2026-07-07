@@ -55,34 +55,46 @@ public class ReportExcelService : IReportExcelService
             ?? jobLogs.Select(e => e.JobId).FirstOrDefault(j => j.HasValue)
             ?? Guid.Empty;
 
-        var usersPre = ResolveColumnUsernames(columnUserNames, userNameToDisplayName, jobLogs);
+        var usersPre = ResolvePlannedColumnUsernames(columnUserNames, userNameToDisplayName, jobDetail);
         var lastColTitle = Math.Max(8, usersPre.Count + 2);
-
-        var ws = wb.Worksheets.Add("Cost & stages");
-        ws.Cell(1, 1).Value = "Work cost & stage breakdown";
-        StyleTitleMerge(ws.Range(1, 1, 1, lastColTitle));
-
-        ws.Cell(2, 1).Value = $"{jobCode} — {jobDescription}";
-        ws.Range(2, 1, 2, lastColTitle).Merge().Style.Fill.BackgroundColor = CardBg;
-
-        ws.Cell(3, 1).Value =
-            $"Records date range: {periodStart:dd.MM.yyyy} – {periodEnd:dd.MM.yyyy}";
-        ws.Range(3, 1, 3, lastColTitle).Merge();
 
         var lookups = BuildLookupsFromJobDetail(jobDetail, jobCode, jobDescription);
 
-        var r = 5;
-        FillJobLandscapePerformanceSheet(ws, ref r, lookups, jobIdResolved, jobLogs,
-            userNameToDisplayName, columnUserNames);
+        var wsPlanned = wb.Worksheets.Add("Cost & stages");
+        wsPlanned.Cell(1, 1).Value = "Work cost & stage breakdown (planned budget)";
+        StyleTitleMerge(wsPlanned.Range(1, 1, 1, lastColTitle));
 
-        ws.Columns().AdjustToContents();
+        wsPlanned.Cell(2, 1).Value = $"{jobCode} — {jobDescription}";
+        wsPlanned.Range(2, 1, 2, lastColTitle).Merge().Style.Fill.BackgroundColor = CardBg;
 
-        AppendEmployeePerformanceWorksheet(wb, lookups, jobIdResolved, jobDetail, jobLogs, userNameToDisplayName,
-            periodStart, periodEnd, jobCode, jobDescription, lastColTitle);
+        wsPlanned.Cell(3, 1).Value =
+            "Based on job definition only (planned hours × hourly rates). Logged work is not included.";
+        wsPlanned.Range(3, 1, 3, lastColTitle).Merge();
 
-        if (jobDetail != null)
-            AppendProjectOverviewWorksheet(wb, lookups, jobIdResolved, jobDetail, jobLogs, userNameToDisplayName,
-                periodStart, periodEnd, jobCode, jobDescription, lastColTitle);
+        var rPlanned = 5;
+        FillJobLandscapePerformanceSheet(wsPlanned, ref rPlanned, lookups, jobIdResolved, jobLogs,
+            userNameToDisplayName, columnUserNames, JobExcelCostMode.PlannedBudget);
+
+        wsPlanned.Columns().AdjustToContents();
+
+        var wsActual = wb.Worksheets.Add("Planned vs actual");
+        wsActual.Cell(1, 1).Value = "Work cost — planned vs actual";
+        StyleTitleMerge(wsActual.Range(1, 1, 1, lastColTitle));
+
+        wsActual.Cell(2, 1).Value = $"{jobCode} — {jobDescription}";
+        wsActual.Range(2, 1, 2, lastColTitle).Merge().Style.Fill.BackgroundColor = CardBg;
+
+        var periodNote = entries.Count > 0
+            ? $"Logged work through: {periodStart:dd.MM.yyyy} – {periodEnd:dd.MM.yyyy}"
+            : "No work logs recorded for this job yet.";
+        wsActual.Cell(3, 1).Value = periodNote;
+        wsActual.Range(3, 1, 3, lastColTitle).Merge();
+
+        var rActual = 5;
+        FillJobLandscapePerformanceSheet(wsActual, ref rActual, lookups, jobIdResolved, jobLogs,
+            userNameToDisplayName, columnUserNames, JobExcelCostMode.PlannedVsActual);
+
+        wsActual.Columns().AdjustToContents();
 
         wb.SaveAs(filePath);
     }
@@ -91,20 +103,26 @@ public class ReportExcelService : IReportExcelService
     private static void FillJobLandscapePerformanceSheet(IXLWorksheet ws, ref int startRow,
         WeekExcelLookups lookups, Guid jobId, List<WorkLog> jobLogs,
         IReadOnlyDictionary<string, string> display,
-        IReadOnlyList<string>? columnUserPreset)
+        IReadOnlyList<string>? columnUserPreset,
+        JobExcelCostMode mode)
     {
         lookups.JobDetails.TryGetValue(jobId, out var detail);
-        var userCols = ResolveColumnUsernames(columnUserPreset, display, jobLogs, detail);
+        var userCols = mode == JobExcelCostMode.PlannedBudget
+            ? ResolvePlannedColumnUsernames(columnUserPreset, display, detail)
+            : ResolvePlannedColumnUsernames(columnUserPreset, display, detail);
         var (code, jdesc) = lookups.ResolveJob(jobId);
 
         if (userCols.Count == 0)
         {
-            ws.Cell(startRow, 1).Value = "No users to display in columns (participants list is empty).";
+            ws.Cell(startRow, 1).Value = "No participants in job definition (assign employees on Job Management).";
             startRow += 3;
             return;
         }
 
         var lastCol = userCols.Count + 2;
+        var includeActual = mode == JobExcelCostMode.PlannedVsActual;
+        var plannedStageList = OrderedStagesForPlanned(detail);
+        var actualStageList = includeActual ? OrderedStagesForJobPerformance(detail, jobLogs) : plannedStageList;
 
         ws.Cell(startRow, 1).Value = $"{code} — {jdesc}".Trim().TrimEnd('—', ' ');
         ws.Range(startRow, 1, startRow, lastCol).Merge();
@@ -123,6 +141,7 @@ public class ReportExcelService : IReportExcelService
 
         var matrixTopRow = startRow;
 
+        // Hourly rates
         ws.Cell(startRow, 1).Value = "Hourly rate (job definition)";
         for (var i = 0; i < userCols.Count; i++)
         {
@@ -142,51 +161,285 @@ public class ReportExcelService : IReportExcelService
             else
                 cell.Value = 0;
 
-            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
         ws.Cell(startRow, lastCol).Clear();
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Total hours";
-        for (var i = 0; i < userCols.Count; i++)
+        // Planned hours
+        var plannedHoursRow = startRow;
+        WriteHoursMatrixRow(ws, ref startRow, lastCol, userCols, "Planned hours",
+            u => detail != null ? SumPlannedHoursForUser(detail, u) : 0);
+
+        int? actualHoursRow = null;
+        int? hoursVarianceRow = null;
+        if (includeActual)
         {
-            var h = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
-            ws.Cell(startRow, i + 2).Value = (double)h;
-            ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
-            ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            actualHoursRow = startRow;
+            WriteHoursMatrixRow(ws, ref startRow, lastCol, userCols, "Actual hours logged",
+                u => SumHoursForUser(jobLogs, u, HourFilter.All));
+
+            hoursVarianceRow = startRow;
+            WriteVarianceHoursRow(ws, ref startRow, lastCol, userCols, plannedHoursRow, actualHoursRow.Value);
         }
 
-        ws.Cell(startRow, lastCol).FormulaA1 =
-            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
-        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
-        var totalHoursExcelRow = startRow;
-        startRow++;
-
-        ws.Cell(startRow, 1).Value = "Man-days (hours÷8)";
+        // Man-days
+        var manDaysSourceRow = includeActual ? actualHoursRow!.Value : plannedHoursRow;
+        ws.Cell(startRow, 1).Value = includeActual ? "Man-days — actual (hours÷8)" : "Man-days (hours÷8)";
         for (var i = 0; i < userCols.Count; i++)
         {
-            ws.Cell(startRow, i + 2).FormulaA1 =
-                $"{ColLetter(i + 2)}{totalHoursExcelRow}/8";
+            ws.Cell(startRow, i + 2).FormulaA1 = $"{ColLetter(i + 2)}{manDaysSourceRow}/8";
             ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
             ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
-        ws.Cell(startRow, lastCol).FormulaA1 =
-            $"{ColLetter(lastCol)}{totalHoursExcelRow}/8";
+        ws.Cell(startRow, lastCol).FormulaA1 = $"{ColLetter(lastCol)}{manDaysSourceRow}/8";
         ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
         startRow++;
 
-        ws.Cell(startRow, 1).Value = "Total cost";
+        if (includeActual)
+        {
+            ws.Cell(startRow, 1).Value = "Man-days — planned (hours÷8)";
+            for (var i = 0; i < userCols.Count; i++)
+            {
+                ws.Cell(startRow, i + 2).FormulaA1 = $"{ColLetter(i + 2)}{plannedHoursRow}/8";
+                ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.00";
+                ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            }
+
+            ws.Cell(startRow, lastCol).FormulaA1 = $"{ColLetter(lastCol)}{plannedHoursRow}/8";
+            ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.00";
+            startRow++;
+        }
+
+        // Costs
+        var plannedCostRow = startRow;
+        WriteCostMatrixRow(ws, ref startRow, lastCol, userCols, jobId, lookups, "Planned cost",
+            u => detail != null ? SumPlannedHoursForUser(detail, u) : 0);
+
+        int? actualCostRow = null;
+        int? costOverloadRow = null;
+        if (includeActual)
+        {
+            actualCostRow = startRow;
+            WriteCostMatrixRow(ws, ref startRow, lastCol, userCols, jobId, lookups, "Actual cost",
+                u => SumHoursForUser(jobLogs, u, HourFilter.All));
+
+            costOverloadRow = startRow;
+            WriteCostVarianceRow(ws, ref startRow, lastCol, userCols, plannedCostRow, actualCostRow.Value,
+                "Cost overload (actual − planned)");
+        }
+
+        ws.Row(startRow).Height = 8;
+        startRow++;
+
+        // Stage rows — planned
+        foreach (var sid in plannedStageList)
+        {
+            var lbl = lookups.ResolveStageEnglish(jobId, sid);
+            if (includeActual)
+                lbl += " (planned)";
+            WriteStageHoursRow(ws, ref startRow, lastCol, userCols, lbl, matrixTopRow,
+                u => detail != null ? PlannedHoursFor(detail, sid, u) : 0);
+        }
+
+        // Stage rows — actual (sheet 2 only)
+        if (includeActual)
+        {
+            foreach (var sid in actualStageList)
+            {
+                var lbl = sid == Guid.Empty
+                    ? "Unassigned / general (actual)"
+                    : lookups.ResolveStageEnglish(jobId, sid) + " (actual)";
+                WriteStageHoursRow(ws, ref startRow, lastCol, userCols, lbl, matrixTopRow,
+                    u => sid == Guid.Empty
+                        ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage, detail: detail)
+                        : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid, detail));
+            }
+        }
+
+        BorderRange(ws.Range(matrixTopRow - 1, 1, startRow - 1, lastCol));
+        ws.SheetView.FreezeRows(headerExcelRow);
+        startRow++;
+
+        // Stage cost summary — planned
+        var summaryHeaderRow = startRow;
+        WriteStageSummaryHeader(ws, ref startRow);
+        var summaryFirstDataRow = startRow;
+        FillStageSummaryData(ws, ref startRow, plannedStageList, userCols, jobId, lookups, detail, jobLogs,
+            usePlannedHours: true);
+        var plannedSummaryLastRow = startRow - 1;
+        BorderRange(ws.Range(summaryHeaderRow, 1, plannedSummaryLastRow, 5));
+
+        int? actualSummaryHeaderRow = null;
+        int? actualSummaryFirstRow = null;
+        int? actualSummaryLastRow = null;
+        if (includeActual)
+        {
+            startRow += 2;
+            actualSummaryHeaderRow = startRow;
+            ws.Cell(startRow, 1).Value = "Stage summary — actual logged work";
+            ws.Range(startRow, 1, startRow, 5).Merge();
+            ws.Row(startRow).Style.Font.Bold = true;
+            ws.Row(startRow).Style.Fill.BackgroundColor = XLColor.FromHtml("#E8EEF5");
+            startRow++;
+
+            WriteStageSummaryHeader(ws, ref startRow);
+            actualSummaryFirstRow = startRow;
+            FillStageSummaryData(ws, ref startRow, actualStageList, userCols, jobId, lookups, detail, jobLogs,
+                usePlannedHours: false);
+            actualSummaryLastRow = startRow - 1;
+            BorderRange(ws.Range(actualSummaryHeaderRow!.Value + 1, 1, actualSummaryLastRow.Value, 5));
+        }
+
+        startRow += 2;
+
+        // Grand total footer
+        var grandHdrRow = startRow;
+        if (includeActual)
+        {
+            ws.Cell(grandHdrRow, 1).Value = "Grand Total (planned G&A)";
+            ws.Cell(grandHdrRow, 2).Value = "Grand Total (actual G&A)";
+            ws.Cell(grandHdrRow, 3).Value = "Overload (actual − planned)";
+            ws.Cell(grandHdrRow, 4).Value = "Discount Amount";
+            ws.Cell(grandHdrRow, 5).Value = "First Offer (planned)";
+            StyleHeader(ws.Range(grandHdrRow, 1, grandHdrRow, 5));
+            var grandValRow = startRow + 1;
+            ws.Cell(grandValRow, 1).FormulaA1 = $"SUM(E{summaryFirstDataRow}:E{plannedSummaryLastRow})";
+            ws.Cell(grandValRow, 2).FormulaA1 =
+                $"SUM(E{actualSummaryFirstRow}:E{actualSummaryLastRow})";
+            ws.Cell(grandValRow, 3).FormulaA1 = $"{ColLetter(2)}{grandValRow}-{ColLetter(1)}{grandValRow}";
+            ws.Cell(grandValRow, 4).Value = 0d;
+            ws.Cell(grandValRow, 5).FormulaA1 = $"{ColLetter(1)}{grandValRow}-{ColLetter(4)}{grandValRow}";
+            for (var c = 1; c <= 5; c++)
+            {
+                ws.Cell(grandValRow, c).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(grandValRow, c).Style.Font.FontColor = XLColor.FromHtml("#0563C1");
+                ws.Cell(grandValRow, c).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            }
+
+            BorderRange(ws.Range(grandHdrRow, 1, grandValRow, 5));
+            startRow = grandValRow + 2;
+        }
+        else
+        {
+            ws.Cell(grandHdrRow, 1).Value = "Grand Total";
+            ws.Cell(grandHdrRow, 2).Value = "Discount Amount";
+            ws.Cell(grandHdrRow, 3).Value = "First Offer";
+            var hdrFooter = ws.Range(grandHdrRow, 1, grandHdrRow, 3);
+            hdrFooter.Style.Font.Bold = true;
+            hdrFooter.Style.Fill.BackgroundColor = XLColor.FromHtml("#D9D9D9");
+            hdrFooter.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            BorderRange(hdrFooter);
+
+            var grandValRow = startRow + 1;
+            ws.Cell(grandValRow, 1).FormulaA1 = $"SUM(E{summaryFirstDataRow}:E{plannedSummaryLastRow})";
+            ws.Cell(grandValRow, 2).Value = 0d;
+            ws.Cell(grandValRow, 3).FormulaA1 = $"{ColLetter(1)}{grandValRow}-{ColLetter(2)}{grandValRow}";
+            for (var c = 1; c <= 3; c++)
+            {
+                ws.Cell(grandValRow, c).Style.NumberFormat.Format = "#,##0.00";
+                ws.Cell(grandValRow, c).Style.Font.FontColor = XLColor.FromHtml("#0563C1");
+                ws.Cell(grandValRow, c).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            }
+
+            BorderRange(ws.Range(grandHdrRow, 1, grandValRow, 3));
+            startRow = grandValRow + 2;
+        }
+    }
+
+    private static List<string> ResolvePlannedColumnUsernames(
+        IReadOnlyList<string>? presetOrdered,
+        IReadOnlyDictionary<string, string> display,
+        JobDetail? detail)
+    {
+        if (presetOrdered is { Count: > 0 })
+        {
+            return presetOrdered
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        if (detail?.Participants is { Count: > 0 })
+        {
+            return detail.Participants
+                .Select(p => p.UserName.Trim())
+                .Where(s => s.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        if (detail?.StagePlans is { Count: > 0 })
+        {
+            return detail.StagePlans
+                .Where(p => p.PlannedHours > 0 && !string.IsNullOrWhiteSpace(p.UserName))
+                .Select(p => p.UserName.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .OrderBy(u => display.GetValueOrDefault(u, u), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        return new List<string>();
+    }
+
+    private static List<Guid> OrderedStagesForPlanned(JobDetail? detail)
+    {
+        if (detail?.Stages is not { Count: > 0 })
+            return new List<Guid>();
+        return OrderedStageItems(detail).Select(s => s.Id).ToList();
+    }
+
+    private static decimal SumPlannedHoursForUser(JobDetail detail, string username) =>
+        OrderedStageItems(detail).Sum(st => PlannedHoursFor(detail, st.Id, username));
+
+    private static void WriteHoursMatrixRow(IXLWorksheet ws, ref int row, int lastCol,
+        IReadOnlyList<string> userCols, string label, Func<string, decimal> hoursForUser)
+    {
+        ws.Cell(row, 1).Value = label;
         for (var i = 0; i < userCols.Count; i++)
         {
-            var hrs = SumHoursForUser(jobLogs, userCols[i], HourFilter.All);
-            decimal? rateOpt = null;
-            var isUsd = false;
-            if (jobId != Guid.Empty)
-                rateOpt = lookups.ParticipantHourly(userCols[i], jobId, out isUsd);
+            ws.Cell(row, i + 2).Value = (double)hoursForUser(userCols[i]);
+            ws.Cell(row, i + 2).Style.NumberFormat.Format = "0.0";
+            ws.Cell(row, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
 
-            var cell = ws.Cell(startRow, i + 2);
+        ws.Cell(row, lastCol).FormulaA1 = $"SUM({ColLetter(2)}{row}:{ColLetter(lastCol - 1)}{row})";
+        ws.Cell(row, lastCol).Style.NumberFormat.Format = "0.0";
+        row++;
+    }
+
+    private static void WriteVarianceHoursRow(IXLWorksheet ws, ref int row, int lastCol,
+        IReadOnlyList<string> userCols, int plannedRow, int actualRow)
+    {
+        ws.Cell(row, 1).Value = "Hours variance (actual − planned)";
+        ws.Row(row).Style.Font.Italic = true;
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            ws.Cell(row, i + 2).FormulaA1 = $"{ColLetter(i + 2)}{actualRow}-{ColLetter(i + 2)}{plannedRow}";
+            ws.Cell(row, i + 2).Style.NumberFormat.Format = "0.0";
+            ws.Cell(row, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
+
+        ws.Cell(row, lastCol).FormulaA1 = $"{ColLetter(lastCol)}{actualRow}-{ColLetter(lastCol)}{plannedRow}";
+        ws.Cell(row, lastCol).Style.NumberFormat.Format = "0.0";
+        row++;
+    }
+
+    private static void WriteCostMatrixRow(IXLWorksheet ws, ref int row, int lastCol,
+        IReadOnlyList<string> userCols, Guid jobId, WeekExcelLookups lookups, string label,
+        Func<string, decimal> hoursForUser)
+    {
+        ws.Cell(row, 1).Value = label;
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            var hrs = hoursForUser(userCols[i]);
+            var isUsd = false;
+            decimal? rateOpt = jobId == Guid.Empty ? null : lookups.ParticipantHourly(userCols[i], jobId, out isUsd);
+            var cell = ws.Cell(row, i + 2);
             if (rateOpt.HasValue)
             {
                 cell.Value = (double)(hrs * rateOpt.Value);
@@ -198,133 +451,111 @@ public class ReportExcelService : IReportExcelService
             cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
         }
 
-        ws.Cell(startRow, lastCol).FormulaA1 =
-            $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
-        ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "#,##0.00";
-        startRow++;
+        ws.Cell(row, lastCol).FormulaA1 = $"SUM({ColLetter(2)}{row}:{ColLetter(lastCol - 1)}{row})";
+        ws.Cell(row, lastCol).Style.NumberFormat.Format = "#,##0.00";
+        row++;
+    }
 
-        ws.Row(startRow).Height = 8;
-        startRow++;
+    private static void WriteCostVarianceRow(IXLWorksheet ws, ref int row, int lastCol,
+        IReadOnlyList<string> userCols, int plannedCostRow, int actualCostRow, string label)
+    {
+        ws.Cell(row, 1).Value = label;
+        ws.Row(row).Style.Font.Bold = true;
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            ws.Cell(row, i + 2).FormulaA1 = $"{ColLetter(i + 2)}{actualCostRow}-{ColLetter(i + 2)}{plannedCostRow}";
+            ws.Cell(row, i + 2).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(row, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+        }
 
-        var stageList = OrderedStagesForJobPerformance(detail, jobLogs);
-        if (stageList.Count == 0 && detail?.Stages is { Count: > 0 })
-            stageList.AddRange(detail.Stages.OrderBy(s => s.SortOrder).Select(s => s.Id));
+        ws.Cell(row, lastCol).FormulaA1 = $"{ColLetter(lastCol)}{actualCostRow}-{ColLetter(lastCol)}{plannedCostRow}";
+        ws.Cell(row, lastCol).Style.NumberFormat.Format = "#,##0.00";
+        row++;
+    }
+
+    private static void WriteStageHoursRow(IXLWorksheet ws, ref int row, int lastCol,
+        IReadOnlyList<string> userCols, string label, int matrixTopRow, Func<string, decimal> hoursForUser)
+    {
+        ws.Cell(row, 1).Value = label;
+        for (var i = 0; i < userCols.Count; i++)
+        {
+            ws.Cell(row, i + 2).Value = (double)hoursForUser(userCols[i]);
+            ws.Cell(row, i + 2).Style.NumberFormat.Format = "0.0";
+            ws.Cell(row, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
+            if ((row - matrixTopRow) % 2 == 1)
+                ws.Cell(row, i + 2).Style.Fill.BackgroundColor = StripSub;
+        }
+
+        ws.Cell(row, lastCol).FormulaA1 = $"SUM({ColLetter(2)}{row}:{ColLetter(lastCol - 1)}{row})";
+        ws.Cell(row, lastCol).Style.NumberFormat.Format = "0.0";
+        if ((row - matrixTopRow) % 2 == 1)
+            ws.Cell(row, lastCol).Style.Fill.BackgroundColor = StripSub;
+        row++;
+    }
+
+    private static void WriteStageSummaryHeader(IXLWorksheet ws, ref int row)
+    {
+        ws.Cell(row, 1).Value = "Stage and Description";
+        ws.Range(row, 1, row, 5).Style.Font.Bold = true;
+        ws.Range(row, 1, row, 5).Style.Fill.BackgroundColor = XLColor.FromHtml("#5A5A5A");
+        ws.Range(row, 1, row, 5).Style.Font.FontColor = XLColor.White;
+        ws.Cell(row, 2).Value = "Total";
+        ws.Cell(row, 3).Value = "Total Hours";
+        ws.Cell(row, 4).Value = "Price With Contingency (5%)";
+        ws.Cell(row, 5).Value = "Price With G&A Cost (5%)";
+        BorderRange(ws.Range(row, 1, row, 5));
+        row++;
+    }
+
+    private static void FillStageSummaryData(IXLWorksheet ws, ref int row,
+        IReadOnlyList<Guid> stageList, IReadOnlyList<string> userCols, Guid jobId,
+        WeekExcelLookups lookups, JobDetail? detail, List<WorkLog> jobLogs, bool usePlannedHours)
+    {
+        if (stageList.Count == 0)
+        {
+            ws.Cell(row, 1).Value = "— No stages defined —";
+            for (var c = 2; c <= 5; c++)
+                ws.Cell(row, c).Value = 0d;
+            row++;
+            return;
+        }
 
         foreach (var sid in stageList)
         {
-            var lbl = sid == Guid.Empty ? "Unassigned / general" : lookups.ResolveStageEnglish(jobId, sid);
-            ws.Cell(startRow, 1).Value = lbl;
-            ws.Row(startRow).Style.Font.Bold = false;
-            for (var i = 0; i < userCols.Count; i++)
+            var lbl = sid == Guid.Empty
+                ? "Unassigned / general"
+                : lookups.ResolveStageEnglish(jobId, sid);
+            decimal raw = 0;
+            decimal hrs = 0;
+            foreach (var u in userCols)
             {
-                var h = sid == Guid.Empty
-                    ? SumHoursForUser(jobLogs, userCols[i], HourFilter.UnassignedStage, detail: detail)
-                    : SumHoursForUser(jobLogs, userCols[i], HourFilter.ExactStage, sid, detail);
-                ws.Cell(startRow, i + 2).Value = (double)h;
-                ws.Cell(startRow, i + 2).Style.NumberFormat.Format = "0.0";
-                ws.Cell(startRow, i + 2).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-                if ((startRow - matrixTopRow) % 2 == 1)
-                    ws.Cell(startRow, i + 2).Style.Fill.BackgroundColor = StripSub;
-            }
-
-            ws.Cell(startRow, lastCol).FormulaA1 =
-                $"SUM({ColLetter(2)}{startRow}:{ColLetter(lastCol - 1)}{startRow})";
-            ws.Cell(startRow, lastCol).Style.NumberFormat.Format = "0.0";
-            if ((startRow - matrixTopRow) % 2 == 1)
-                ws.Cell(startRow, lastCol).Style.Fill.BackgroundColor = StripSub;
-
-            startRow++;
-        }
-
-        BorderRange(ws.Range(matrixTopRow - 1, 1, startRow - 1, lastCol));
-        ws.SheetView.FreezeRows(headerExcelRow);
-
-        startRow++;
-
-        ws.Cell(startRow, 1).Value = "Stage and Description";
-        ws.Range(startRow, 1, startRow, 5).Style.Font.Bold = true;
-        ws.Range(startRow, 1, startRow, 5).Style.Fill.BackgroundColor = XLColor.FromHtml("#5A5A5A");
-        ws.Range(startRow, 1, startRow, 5).Style.Font.FontColor = XLColor.White;
-        ws.Cell(startRow, 2).Value = "Total";
-        ws.Cell(startRow, 3).Value = "Total Hours";
-        ws.Cell(startRow, 4).Value = "Price With Contingency (5%)";
-        ws.Cell(startRow, 5).Value = "Price With G&A Cost (5%)";
-        BorderRange(ws.Range(startRow, 1, startRow, 5));
-        var summaryHeaderExcelRow = startRow;
-        startRow++;
-
-        var summaryFirstDataRow = startRow;
-
-        if (stageList.Count == 0)
-        {
-            ws.Cell(startRow, 1).Value = "— No stages defined —";
-            ws.Cell(startRow, 2).Value = 0d;
-            ws.Cell(startRow, 3).Value = 0d;
-            ws.Cell(startRow, 4).Value = 0d;
-            ws.Cell(startRow, 5).Value = 0d;
-            startRow++;
-        }
-        else
-        {
-            foreach (var sid in stageList)
-            {
-                var lbl = sid == Guid.Empty ? "Unassigned / general" : lookups.ResolveStageEnglish(jobId, sid);
-                decimal raw = 0;
-                decimal hrs = 0;
-                foreach (var u in userCols)
-                {
-                    var uh = sid == Guid.Empty
+                decimal uh;
+                if (usePlannedHours)
+                    uh = detail != null ? PlannedHoursFor(detail, sid, u) : 0;
+                else
+                    uh = sid == Guid.Empty
                         ? SumHoursForUser(jobLogs, u, HourFilter.UnassignedStage, detail: detail)
                         : SumHoursForUser(jobLogs, u, HourFilter.ExactStage, sid, detail);
-                    hrs += uh;
-                    var rateOpt = jobId == Guid.Empty ? null : lookups.ParticipantHourly(u, jobId, out _);
-                    if (rateOpt.HasValue)
-                        raw += uh * rateOpt.Value;
-                }
 
-                var cont = raw * (decimal)KontenjanCarpani;
-                var ga = cont * (decimal)GenelGiderCarpani;
-
-                ws.Cell(startRow, 1).Value = lbl;
-                ws.Cell(startRow, 2).Value = (double)raw;
-                ws.Cell(startRow, 3).Value = (double)hrs;
-                ws.Cell(startRow, 4).Value = (double)cont;
-                ws.Cell(startRow, 5).Value = (double)ga;
-                for (var c = 2; c <= 5; c++)
-                    ws.Cell(startRow, c).Style.NumberFormat.Format = "#,##0.00";
-                ws.Cell(startRow, 3).Style.NumberFormat.Format = "0.0";
-                startRow++;
+                hrs += uh;
+                var rateOpt = jobId == Guid.Empty ? null : lookups.ParticipantHourly(u, jobId, out _);
+                if (rateOpt.HasValue)
+                    raw += uh * rateOpt.Value;
             }
+
+            var cont = raw * (decimal)KontenjanCarpani;
+            var ga = cont * (decimal)GenelGiderCarpani;
+
+            ws.Cell(row, 1).Value = lbl;
+            ws.Cell(row, 2).Value = (double)raw;
+            ws.Cell(row, 3).Value = (double)hrs;
+            ws.Cell(row, 4).Value = (double)cont;
+            ws.Cell(row, 5).Value = (double)ga;
+            for (var c = 2; c <= 5; c++)
+                ws.Cell(row, c).Style.NumberFormat.Format = "#,##0.00";
+            ws.Cell(row, 3).Style.NumberFormat.Format = "0.0";
+            row++;
         }
-
-        var summaryLastDataRow = startRow - 1;
-        BorderRange(ws.Range(summaryHeaderExcelRow, 1, summaryLastDataRow, 5));
-
-        startRow += 2;
-
-        var grandHdrRow = startRow;
-        ws.Cell(grandHdrRow, 1).Value = "Grand Total";
-        ws.Cell(grandHdrRow, 2).Value = "Discount Amount";
-        ws.Cell(grandHdrRow, 3).Value = "First Offer";
-        var hdrFooter = ws.Range(grandHdrRow, 1, grandHdrRow, 3);
-        hdrFooter.Style.Font.Bold = true;
-        hdrFooter.Style.Fill.BackgroundColor = XLColor.FromHtml("#D9D9D9");
-        hdrFooter.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        BorderRange(hdrFooter);
-
-        var grandValRow = startRow + 1;
-        ws.Cell(grandValRow, 1).FormulaA1 = $"SUM(E{summaryFirstDataRow}:E{summaryLastDataRow})";
-        ws.Cell(grandValRow, 2).Value = 0d;
-        ws.Cell(grandValRow, 3).FormulaA1 = $"{ColLetter(1)}{grandValRow}-{ColLetter(2)}{grandValRow}";
-        for (var c = 1; c <= 3; c++)
-        {
-            ws.Cell(grandValRow, c).Style.NumberFormat.Format = "#,##0.00";
-            ws.Cell(grandValRow, c).Style.Font.FontColor = XLColor.FromHtml("#0563C1");
-            ws.Cell(grandValRow, c).Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
-        }
-
-        BorderRange(ws.Range(grandHdrRow, 1, grandValRow, 3));
-        startRow = grandValRow + 2;
     }
 
     private static List<string> ResolveColumnUsernames(
@@ -618,6 +849,9 @@ public class ReportExcelService : IReportExcelService
     }
 
     private enum HourFilter { All, UnassignedStage, ExactStage }
+
+    /// <summary>Sayfa 1: yalnızca iş tanımındaki plan; Sayfa 2: plan + gerçekleşen karşılaştırması.</summary>
+    private enum JobExcelCostMode { PlannedBudget, PlannedVsActual }
 
     private static decimal SumHoursForUser(List<WorkLog> logs, string userColumn, HourFilter mode,
         Guid stageId = default, JobDetail? detail = null)
